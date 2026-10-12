@@ -21,30 +21,42 @@ type LogConfig struct {
 }
 
 type Inbound struct {
-	Type        string `json:"type"`
-	Tag         string `json:"tag"`
-	Listen      string `json:"listen"`
-	ListenPort  int    `json:"listen_port"`
-	Sniff       bool   `json:"sniff,omitempty"`
-	SniffOverrideDestination bool `json:"sniff_override_destination,omitempty"`
+	Type                     string            `json:"type"`
+	Tag                      string            `json:"tag"`
+	Listen                   string            `json:"listen"`
+	ListenPort               int               `json:"listen_port"`
+	Sniff                    bool              `json:"sniff,omitempty"`
+	SniffOverrideDestination bool              `json:"sniff_override_destination,omitempty"`
+	Users                    []InboundUser     `json:"users,omitempty"`
+	TLS                      *InboundTLSConfig `json:"tls,omitempty"`
+}
+
+type InboundUser struct {
+	Name   string `json:"name,omitempty"`
+	Secret string `json:"secret,omitempty"`
+}
+
+type InboundTLSConfig struct {
+	Enabled    bool   `json:"enabled"`
+	ServerName string `json:"server_name,omitempty"`
 }
 
 type Outbound struct {
-	Type        string     `json:"type"`
-	Tag         string     `json:"tag"`
-	Server      string     `json:"server,omitempty"`
-	ServerPort  int        `json:"server_port,omitempty"`
-	UUID        string     `json:"uuid,omitempty"`
-	Flow        string     `json:"flow,omitempty"`
-	PacketEncoding string `json:"packet_encoding,omitempty"`
-	TLS         *TLSConfig `json:"tls,omitempty"`
+	Type           string     `json:"type"`
+	Tag            string     `json:"tag"`
+	Server         string     `json:"server,omitempty"`
+	ServerPort     int        `json:"server_port,omitempty"`
+	UUID           string     `json:"uuid,omitempty"`
+	Flow           string     `json:"flow,omitempty"`
+	PacketEncoding string     `json:"packet_encoding,omitempty"`
+	TLS            *TLSConfig `json:"tls,omitempty"`
 }
 
 type TLSConfig struct {
-	Enabled    bool          `json:"enabled"`
-	ServerName string        `json:"server_name,omitempty"`
-	Insecure   bool          `json:"insecure,omitempty"`
-	UTLS       *UTLSConfig   `json:"utls,omitempty"`
+	Enabled    bool           `json:"enabled"`
+	ServerName string         `json:"server_name,omitempty"`
+	Insecure   bool           `json:"insecure,omitempty"`
+	UTLS       *UTLSConfig    `json:"utls,omitempty"`
 	Reality    *RealityConfig `json:"reality,omitempty"`
 }
 
@@ -71,22 +83,27 @@ type Rule struct {
 	Outbound string   `json:"outbound"`
 }
 
-func BuildSingboxConfig(webProxyPort int, vlessURL string, blacklistCIDR []string, blacklistCountries []string) ([]byte, error) {
+type ProxyOptions struct {
+	WebProxyEnabled bool
+	WebProxyPort    int
+
+	MTProtoEnabled bool
+	MTProtoPort    int
+	MTProtoSecret  string
+	MTProtoSNI     string
+
+	VlessURL           string
+	BlacklistCIDR      []string
+	BlacklistCountries []string
+}
+
+func BuildDualProxyConfig(opts ProxyOptions) ([]byte, error) {
 	cfg := Config{
 		Log: LogConfig{
 			Level:     "info",
 			Timestamp: true,
 		},
-		Inbounds: []Inbound{
-			{
-				Type:                     "mixed",
-				Tag:                      "tg-inbound",
-				Listen:                   "::",
-				ListenPort:               webProxyPort,
-				Sniff:                    true,
-				SniffOverrideDestination: false,
-			},
-		},
+		Inbounds: []Inbound{},
 		Outbounds: []Outbound{
 			{Type: "direct", Tag: "direct"},
 			{Type: "block", Tag: "block"},
@@ -98,18 +115,47 @@ func BuildSingboxConfig(webProxyPort int, vlessURL string, blacklistCIDR []strin
 		},
 	}
 
-	// 1. Правило фильтрации: черный список IP и CIDR
-	if len(blacklistCIDR) > 0 {
+	// 1. Inbound Web Proxy
+	if opts.WebProxyEnabled && opts.WebProxyPort > 0 {
+		cfg.Inbounds = append(cfg.Inbounds, Inbound{
+			Type:                     "mixed",
+			Tag:                      "tg-web-inbound",
+			Listen:                   "::",
+			ListenPort:               opts.WebProxyPort,
+			Sniff:                    true,
+			SniffOverrideDestination: false,
+		})
+	}
+
+	// 2. Inbound MTProto Fake-TLS
+	if opts.MTProtoEnabled && opts.MTProtoPort > 0 {
+		inboundMT := Inbound{
+			Type:       "shadowsocks", // Либо нативный туннель sing-box
+			Tag:        "tg-mtproto-inbound",
+			Listen:     "::",
+			ListenPort: opts.MTProtoPort,
+		}
+		if opts.MTProtoSNI != "" {
+			inboundMT.TLS = &InboundTLSConfig{
+				Enabled:    true,
+				ServerName: opts.MTProtoSNI,
+			}
+		}
+		cfg.Inbounds = append(cfg.Inbounds, inboundMT)
+	}
+
+	// 3. Черный список IP / CIDR
+	if len(opts.BlacklistCIDR) > 0 {
 		cfg.Route.Rules = append(cfg.Route.Rules, Rule{
-			IPCIDR:   blacklistCIDR,
+			IPCIDR:   opts.BlacklistCIDR,
 			Outbound: "block",
 		})
 	}
 
-	// 2. Правило фильтрации: черный список стран (GeoIP)
-	if len(blacklistCountries) > 0 {
-		countries := make([]string, len(blacklistCountries))
-		for i, c := range blacklistCountries {
+	// 4. Черный список стран (GeoIP)
+	if len(opts.BlacklistCountries) > 0 {
+		countries := make([]string, len(opts.BlacklistCountries))
+		for i, c := range opts.BlacklistCountries {
 			countries[i] = strings.ToLower(c)
 		}
 		cfg.Route.Rules = append(cfg.Route.Rules, Rule{
@@ -118,9 +164,9 @@ func BuildSingboxConfig(webProxyPort int, vlessURL string, blacklistCIDR []strin
 		})
 	}
 
-	// 3. Исходящий маршрут (Direct или VLESS Relay)
-	if vlessURL != "" {
-		vlessOutbound, err := ParseVlessLink(vlessURL)
+	// 5. Исходящий маршрут (Direct или VLESS Relay)
+	if opts.VlessURL != "" {
+		vlessOutbound, err := ParseVlessLink(opts.VlessURL)
 		if err != nil {
 			return nil, fmt.Errorf("ошибка парсинга VLESS: %w", err)
 		}

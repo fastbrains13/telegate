@@ -487,7 +487,17 @@ echo "=== Нода успешно запущена и подключена к п
 			vlessTarget = state.VlessUpstream
 		}
 
-		cfgJSON, err := generator.BuildSingboxConfig(
+		cfgJSON, err := generator.BuildDualProxyConfig(generator.ProxyOptions{
+			WebProxyEnabled:    state.WebProxyEnabled,
+			WebProxyPort:       state.Port,
+			MTProtoEnabled:     state.MTProtoEnabled,
+			MTProtoPort:        state.MTProtoPort,
+			MTProtoSecret:      state.MTProtoSecret,
+			MTProtoSNI:         state.MTProtoSNI,
+			VlessURL:           vlessTarget,
+			BlacklistCIDR:      state.BlacklistCIDR,
+			BlacklistCountries: state.BlacklistCountries,
+		})
 			state.Port,
 			vlessTarget,
 			state.BlacklistCIDR,
