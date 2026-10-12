@@ -5,10 +5,12 @@ import (
 	"embed"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"io/fs"
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -34,6 +36,7 @@ type NodeStatus struct {
 	IP          string          `json:"ip"`
 	Token       string          `json:"token"`
 	LastSeen    time.Time       `json:"last_seen"`
+	IsOnline    bool            `json:"is_online"`
 	ActiveConns []ClientSession `json:"active_conns"`
 	UptimeSec   int64           `json:"uptime_sec"`
 }
@@ -64,10 +67,10 @@ var (
 		Domain:             "tg-web.myproxynode.org",
 		WSPath:             "/api/v1/tg-gateway",
 		FallbackURL:        "https://ya.ru",
-		VlessUpstream:      "vless://b83c21a4-9e32-4299-8ab2-94fa108a7b90@fra-core-01.relays.net:443?encryption=none&flow=xtls-rprx-vision&security=reality&sni=speedtest.net&fp=chrome&pbk=Z19xK3L0x9j4...#EU-Relay",
-		VlessEnabled:       true,
-		BlacklistCIDR:      []string{"185.220.101.0/24", "45.154.255.8"},
-		BlacklistCountries: []string{"CN", "IR", "KP"},
+		VlessUpstream:      "",
+		VlessEnabled:       false,
+		BlacklistCIDR:      []string{"185.220.101.0/24"},
+		BlacklistCountries: []string{"CN", "IR"},
 		Nodes:              make(map[string]*NodeStatus),
 	}
 )
@@ -119,22 +122,23 @@ func authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 func main() {
 	loadState()
 
-	if len(state.Nodes) == 0 {
-		state.Nodes["node-eu-01"] = &NodeStatus{
-			ID:        "node-eu-01",
-			Name:      "Node-EU-01 (Amsterdam)",
-			IP:        "185.192.110.42",
-			Token:     "tok_eu01_master",
-			LastSeen:  time.Now(),
-			UptimeSec: 86400,
-			ActiveConns: []ClientSession{
-				{IP: "178.62.204.15", Country: "NL", ISP: "DigitalOcean", Protocol: "Web Proxy", Outbound: "-> VLESS Upstream", BytesSent: 44800000, Connected: time.Now().Add(-14 * time.Minute)},
-				{IP: "91.108.56.110", Country: "DE", ISP: "Hetzner", Protocol: "MTProto", Outbound: "-> Direct (DC4)", BytesSent: 126000000, Connected: time.Now().Add(-64 * time.Minute)},
-			},
+	// Фоновый воркер: проверка статуса здоровья нод (offline если нет сигнала > 30 сек)
+	go func() {
+		for {
+			time.Sleep(10 * time.Second)
+			state.mu.Lock()
+			now := time.Now()
+			for _, n := range state.Nodes {
+				n.IsOnline = now.Sub(n.LastSeen) < 30*time.Second
+				if !n.IsOnline {
+					n.ActiveConns = nil
+				}
+			}
+			state.mu.Unlock()
 		}
-	}
+	}()
 
-	// AUTH API
+	// 1. АВТОРИЗАЦИЯ
 	http.HandleFunc("/api/auth/login", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -209,7 +213,35 @@ func main() {
 		w.Write([]byte(`{"username":"admin","status":"authenticated"}`))
 	})
 
-	// PROTECTED API
+	http.HandleFunc("/api/auth/password", authMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		var req struct {
+			OldPassword string `json:"old_password"`
+			NewPassword string `json:"new_password"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || len(req.NewPassword) < 4 {
+			http.Error(w, "Пароль должен быть не менее 4 символов", http.StatusBadRequest)
+			return
+		}
+
+		state.mu.Lock()
+		if req.OldPassword != state.AdminPassword {
+			state.mu.Unlock()
+			http.Error(w, "Текущий пароль неверен", http.StatusForbidden)
+			return
+		}
+		state.AdminPassword = req.NewPassword
+		state.mu.Unlock()
+		saveState()
+
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"status":"success"}`))
+	}))
+
+	// 2. ДАШБОРД И КОНФИГУРАЦИЯ
 	http.HandleFunc("/api/state", authMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		state.mu.RLock()
 		defer state.mu.RUnlock()
@@ -249,6 +281,7 @@ func main() {
 		w.Write([]byte(`{"status":"success"}`))
 	}))
 
+	// 3. УПРАВЛЕНИЕ НОДАМИ
 	http.HandleFunc("/api/nodes/create", authMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -273,6 +306,7 @@ func main() {
 			IP:          body.IP,
 			Token:       token,
 			LastSeen:    time.Now(),
+			IsOnline:    false,
 			ActiveConns: []ClientSession{},
 		}
 		state.mu.Unlock()
@@ -285,6 +319,16 @@ func main() {
 		})
 	}))
 
+	http.HandleFunc("/api/nodes/delete", authMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		id := r.URL.Query().Get("id")
+		state.mu.Lock()
+		delete(state.Nodes, id)
+		state.mu.Unlock()
+		saveState()
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	// 4. ЧЕРНЫЙ СПИСОК (IP + СТРАНЫ)
 	http.HandleFunc("/api/blacklist/ip", authMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
 			var body struct {
@@ -319,7 +363,101 @@ func main() {
 		}
 	}))
 
-	// AGENT API
+	http.HandleFunc("/api/blacklist/country", authMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			var body struct {
+				Country string `json:"country"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Country == "" {
+				http.Error(w, "Bad request", http.StatusBadRequest)
+				return
+			}
+			state.mu.Lock()
+			state.BlacklistCountries = append(state.BlacklistCountries, strings.ToUpper(body.Country))
+			state.mu.Unlock()
+			saveState()
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		if r.Method == http.MethodDelete {
+			c := strings.ToUpper(r.URL.Query().Get("country"))
+			state.mu.Lock()
+			filtered := []string{}
+			for _, item := range state.BlacklistCountries {
+				if item != c {
+					filtered = append(filtered, item)
+				}
+			}
+			state.BlacklistCountries = filtered
+			state.mu.Unlock()
+			saveState()
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+	}))
+
+	// 5. AGENT API & BOOTSTRAP
+	http.HandleFunc("/bootstrap", func(w http.ResponseWriter, r *http.Request) {
+		token := r.URL.Query().Get("token")
+		nodeID := r.URL.Query().Get("id")
+		host := r.Host
+
+		script := fmt.Sprintf(`#!/usr/bin/env bash
+set -e
+echo "=== [TeleGate] Автоматическое подключение ноды %s ==="
+if ! command -v sing-box &> /dev/null; then
+    bash -c "$(curl -fsSL https://sing-box.app/install.sh)"
+fi
+curl -fsSL "http://%s/agent-bin" -o /usr/local/bin/telegate-agent || true
+chmod +x /usr/local/bin/telegate-agent || true
+mkdir -p /etc/telegate
+cat << SERVICE > /etc/systemd/system/telegate-agent.service
+[Unit]
+Description=TeleGate Node Agent
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/telegate-agent -master "http://%s" -token "%s" -id "%s"
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+SERVICE
+systemctl daemon-reload
+systemctl enable --now telegate-agent || true
+echo "=== Нода успешно подключена к панели! ==="
+`, nodeID, host, host, token, nodeID)
+
+		w.Header().Set("Content-Type", "text/plain")
+		w.Write([]byte(script))
+	})
+
+	// Heartbeat от агента с реальным списком подключений
+	http.HandleFunc("/api/agent/heartbeat", func(w http.ResponseWriter, r *http.Request) {
+		var payload struct {
+			NodeID            string          `json:"node_id"`
+			UptimeSeconds     int64           `json:"uptime_seconds"`
+			ActiveConnections []ClientSession `json:"active_connections"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			http.Error(w, "Bad request", http.StatusBadRequest)
+			return
+		}
+
+		state.mu.Lock()
+		if node, exists := state.Nodes[payload.NodeID]; exists {
+			node.LastSeen = time.Now()
+			node.IsOnline = true
+			node.UptimeSec = payload.UptimeSeconds
+			node.ActiveConns = payload.ActiveConnections
+		}
+		state.mu.Unlock()
+
+		w.WriteHeader(http.StatusOK)
+	})
+
 	http.HandleFunc("/api/agent/config", func(w http.ResponseWriter, r *http.Request) {
 		state.mu.RLock()
 		defer state.mu.RUnlock()
@@ -344,7 +482,7 @@ func main() {
 		w.Write(cfgJSON)
 	})
 
-	// STATIC UI
+	// 6. UI
 	subFS, err := fs.Sub(uiFS, "ui")
 	if err == nil {
 		http.Handle("/", http.FileServer(http.FS(subFS)))

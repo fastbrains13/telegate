@@ -29,7 +29,7 @@
 </head>
 <body class="bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 min-h-screen flex antialiased transition-colors duration-200">
 
-  <!-- ================= AUTH VIEW (LOGIN SCREEN) ================= -->
+  <!-- ================= AUTH VIEW ================= -->
   <div id="auth-screen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-50 dark:bg-zinc-950">
     <div class="w-full max-w-sm p-8 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-xl space-y-6">
       <div class="text-center space-y-2">
@@ -91,7 +91,7 @@
           <button onclick="switchTab('connections')" id="nav-connections" class="nav-item w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 transition">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
             <span>Подключения & IP</span>
-            <span id="badge-conns" class="ml-auto text-xs font-semibold px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500">2</span>
+            <span id="badge-conns" class="ml-auto text-xs font-semibold px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500">0</span>
           </button>
 
           <button onclick="switchTab('security')" id="nav-security" class="nav-item w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 transition">
@@ -110,11 +110,11 @@
           </button>
         </div>
         <div class="flex items-center justify-between pt-2">
-          <div class="flex items-center gap-3">
+          <div class="flex items-center gap-3 cursor-pointer" onclick="openPasswordModal()">
             <div class="w-8 h-8 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center font-bold text-xs">AD</div>
             <div class="text-xs">
               <div class="font-semibold text-zinc-900 dark:text-zinc-100">admin</div>
-              <div class="text-zinc-400">Master: Live</div>
+              <div class="text-zinc-400">Сменить пароль</div>
             </div>
           </div>
           <button onclick="handleLogout()" title="Выйти" class="p-1.5 rounded-md text-zinc-400 hover:text-rose-500 transition">
@@ -243,13 +243,26 @@
 
         <!-- SECURITY TAB -->
         <section id="tab-security" class="hidden space-y-6">
-          <div class="p-6 rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 shadow-sm space-y-4 max-w-xl">
-            <h3 class="font-semibold text-sm">Черный список IP и CIDR-подсетей</h3>
-            <div class="flex gap-2">
-              <input id="input-ban-ip" type="text" placeholder="например, 198.51.100.4 или 203.0.113.0/24" class="flex-1 text-xs px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-transparent font-mono outline-none">
-              <button onclick="addBanIP()" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-medium transition">Заблокировать</button>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- IP Blocklist -->
+            <div class="p-6 rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 shadow-sm space-y-4">
+              <h3 class="font-semibold text-sm">Черный список IP и CIDR-подсетей</h3>
+              <div class="flex gap-2">
+                <input id="input-ban-ip" type="text" placeholder="например, 198.51.100.4 или 203.0.113.0/24" class="flex-1 text-xs px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-transparent font-mono outline-none">
+                <button onclick="addBanIP()" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-medium transition">Заблокировать</button>
+              </div>
+              <div id="blacklist-items" class="space-y-2 max-h-60 overflow-y-auto custom-scrollbar"></div>
             </div>
-            <div id="blacklist-items" class="space-y-2"></div>
+
+            <!-- Country Blocklist -->
+            <div class="p-6 rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 shadow-sm space-y-4">
+              <h3 class="font-semibold text-sm">Блокировка стран (GeoIP)</h3>
+              <div class="flex gap-2">
+                <input id="input-ban-country" type="text" placeholder="Код страны (например: CN, IR, US)" class="flex-1 text-xs px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-transparent font-mono outline-none uppercase">
+                <button onclick="addBanCountry()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-medium transition">Добавить</button>
+              </div>
+              <div id="blacklist-countries" class="flex flex-wrap gap-2"></div>
+            </div>
           </div>
         </section>
 
@@ -277,13 +290,34 @@
       </div>
 
       <div id="node-command-box" class="hidden space-y-2">
-        <label class="block text-xs font-medium text-emerald-500">Запустите эту команду на вашем сервере (ноде):</label>
+        <label class="block text-xs font-medium text-emerald-500">Запустите эту команду на целевом сервере:</label>
         <div class="p-3 rounded-lg bg-zinc-950 font-mono text-[11px] text-zinc-300 break-all select-all border border-zinc-800" id="generated-command"></div>
       </div>
 
       <div class="flex justify-end gap-2 pt-2 border-t border-zinc-200 dark:border-zinc-800">
         <button onclick="closeAddNodeModal()" class="px-4 py-2 text-xs font-medium rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition">Закрыть</button>
         <button id="btn-create-node" onclick="createNode()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-lg transition shadow-sm">Сгенерировать ключ</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MODAL: CHANGE PASSWORD ================= -->
+  <div id="password-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm hidden">
+    <div class="w-full max-w-sm p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-2xl space-y-4">
+      <h3 class="font-semibold text-sm">Смена пароля администратора</h3>
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-medium text-zinc-500 mb-1">Текущий пароль</label>
+          <input id="pwd-old" type="password" class="w-full text-xs px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-transparent outline-none">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-zinc-500 mb-1">Новый пароль</label>
+          <input id="pwd-new" type="password" class="w-full text-xs px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-transparent outline-none">
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 pt-2 border-t border-zinc-200 dark:border-zinc-800">
+        <button onclick="closePasswordModal()" class="px-3.5 py-1.5 text-xs font-medium rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition">Отмена</button>
+        <button onclick="saveNewPassword()" class="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-lg transition shadow-sm">Сохранить</button>
       </div>
     </div>
   </div>
@@ -364,20 +398,34 @@
       nodesContainer.innerHTML = '';
       connsBody.innerHTML = '';
 
-      Object.values(globalState.nodes || {}).forEach(node => {
+      const nodesList = Object.values(globalState.nodes || {});
+      if (nodesList.length === 0) {
+        nodesContainer.innerHTML = '<div class="p-6 text-center text-xs text-zinc-500">Нет подключенных нод. Нажмите "+ Добавить ноду", чтобы подключить первый сервер.</div>';
+      }
+
+      nodesList.forEach(node => {
         totalConns += (node.active_conns || []).length;
+        const statusDot = node.is_online
+          ? '<span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500"></span>'
+          : '<span class="inline-block w-2.5 h-2.5 rounded-full bg-rose-500"></span>';
         
         nodesContainer.innerHTML += `
           <div class="p-5 flex items-center justify-between">
             <div>
               <div class="flex items-center gap-2">
-                <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                ${statusDot}
                 <span class="font-semibold text-sm">${node.name}</span>
                 <span class="font-mono text-xs text-zinc-400">(${node.ip || 'no IP'})</span>
+                <span class="text-[11px] px-2 py-0.5 rounded font-medium ${node.is_online ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}">
+                  ${node.is_online ? 'Online' : 'Offline'}
+                </span>
               </div>
               <div class="text-xs text-zinc-500 mt-1">Коннектов: <b>${(node.active_conns || []).length}</b> • Upstream: <b>${globalState.vless_enabled ? 'VLESS Reality' : 'Direct'}</b></div>
             </div>
-            <button onclick="switchTab('proxies')" class="px-3 py-1.5 text-xs border border-zinc-300 dark:border-zinc-700 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800">Настройки</button>
+            <div class="flex items-center gap-2">
+              <button onclick="switchTab('proxies')" class="px-3 py-1.5 text-xs border border-zinc-300 dark:border-zinc-700 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800">Настройки</button>
+              <button onclick="deleteNode('${node.id}')" class="px-3 py-1.5 text-xs text-rose-500 border border-rose-500/20 rounded-lg hover:bg-rose-500 hover:text-white transition">Удалить</button>
+            </div>
           </div>
         `;
 
@@ -385,9 +433,9 @@
           connsBody.innerHTML += `
             <tr class="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/20">
               <td class="py-3 px-4 font-semibold">${c.ip}</td>
-              <td class="py-3 px-4 font-sans">${c.country} • ${c.isp}</td>
+              <td class="py-3 px-4 font-sans">${c.country || 'Unknown'} • ${c.isp || 'Peer'}</td>
               <td class="py-3 px-4 font-sans text-indigo-400">${c.protocol}</td>
-              <td class="py-3 px-4 font-sans text-emerald-400">${c.outbound}</td>
+              <td class="py-3 px-4 font-sans text-emerald-400">${globalState.vless_enabled ? '→ VLESS Upstream' : '→ Direct'}</td>
               <td class="py-3 px-4 text-right">
                 <button onclick="banFromTable('${c.ip}')" class="px-2.5 py-1 text-[11px] rounded bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white transition font-sans">В бан</button>
               </td>
@@ -399,7 +447,7 @@
       document.getElementById('stat-conns').innerText = totalConns;
       document.getElementById('badge-conns').innerText = totalConns;
       document.getElementById('stat-upstream').innerText = globalState.vless_enabled ? 'VLESS Reality' : 'Direct';
-      document.getElementById('stat-blacklist-count').innerText = (globalState.blacklist_cidr || []).length;
+      document.getElementById('stat-blacklist-count').innerText = (globalState.blacklist_cidr || []).length + (globalState.blacklist_countries || []).length;
 
       document.getElementById('cfg-domain').value = globalState.domain || '';
       document.getElementById('cfg-port').value = globalState.port || 443;
@@ -409,14 +457,27 @@
       document.getElementById('cfg-vless-enabled').checked = !!globalState.vless_enabled;
       document.getElementById('client-link').value = 'https://t.me/proxy?server=' + globalState.domain + '&port=' + globalState.port;
 
+      // Render IP Blacklist
       const blContainer = document.getElementById('blacklist-items');
       blContainer.innerHTML = '';
       (globalState.blacklist_cidr || []).forEach(ip => {
         blContainer.innerHTML += `
           <div class="flex items-center justify-between p-2.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/40 text-xs font-mono">
             <span class="text-rose-500 font-semibold">${ip}</span>
-            <button onclick="removeBan('${ip}')" class="text-zinc-400 hover:text-rose-500 font-sans">Удалить</button>
+            <button onclick="removeBan('${ip}')" class="text-zinc-400 hover:text-rose-500 font-sans">✕</button>
           </div>
+        `;
+      });
+
+      // Render Country Blacklist
+      const cContainer = document.getElementById('blacklist-countries');
+      cContainer.innerHTML = '';
+      (globalState.blacklist_countries || []).forEach(c => {
+        cContainer.innerHTML += `
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700">
+            <span>${c}</span>
+            <button onclick="removeCountryBan('${c}')" class="text-zinc-400 hover:text-rose-500">✕</button>
+          </span>
         `;
       });
     }
@@ -437,7 +498,7 @@
         body: JSON.stringify(payload)
       });
       if (res.ok) {
-        alert('Конфигурация успешно сохранена и доставлена на ноды!');
+        alert('Конфигурация успешно сохранена!');
         loadState();
       }
     }
@@ -470,6 +531,23 @@
       loadState();
     }
 
+    async function addBanCountry() {
+      const c = document.getElementById('input-ban-country').value.trim().toUpperCase();
+      if (!c) return;
+      await fetch('/api/blacklist/country', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({country: c})
+      });
+      document.getElementById('input-ban-country').value = '';
+      loadState();
+    }
+
+    async function removeCountryBan(c) {
+      await fetch('/api/blacklist/country?country=' + encodeURIComponent(c), { method: 'DELETE' });
+      loadState();
+    }
+
     function openAddNodeModal() {
       document.getElementById('new-node-name').value = '';
       document.getElementById('new-node-ip').value = '';
@@ -495,11 +573,37 @@
       });
       const data = await res.json();
       
-      const host = window.location.origin;
-      const cmd = `curl -fsSL https://raw.githubusercontent.com/fastbrains13/telegate/main/scripts/install-node.sh | bash -s "${host}" "${data.token}" "${data.id}"`;
+      const host = window.location.host;
+      const cmd = `curl -fsSL "http://${host}/bootstrap?token=${data.token}&id=${data.id}" | bash`;
       document.getElementById('generated-command').innerText = cmd;
       document.getElementById('node-command-box').classList.remove('hidden');
       document.getElementById('btn-create-node').classList.add('hidden');
+    }
+
+    async function deleteNode(id) {
+      if (confirm('Удалить ноду из кластера?')) {
+        await fetch('/api/nodes/delete?id=' + encodeURIComponent(id));
+        loadState();
+      }
+    }
+
+    function openPasswordModal() { document.getElementById('password-modal').classList.remove('hidden'); }
+    function closePasswordModal() { document.getElementById('password-modal').classList.add('hidden'); }
+
+    async function saveNewPassword() {
+      const oldPassword = document.getElementById('pwd-old').value;
+      const newPassword = document.getElementById('pwd-new').value;
+      const res = await fetch('/api/auth/password', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({old_password: oldPassword, new_password: newPassword})
+      });
+      if (res.ok) {
+        alert('Пароль успешно обновлен!');
+        closePasswordModal();
+      } else {
+        alert(await res.text());
+      }
     }
 
     function switchTab(t) {
@@ -515,6 +619,7 @@
       document.documentElement.classList.toggle('dark');
     }
 
+    setInterval(loadState, 5000);
     checkAuth();
   </script>
 </body>
