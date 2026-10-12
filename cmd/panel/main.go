@@ -30,6 +30,32 @@ type ClientSession struct {
 	Connected time.Time `json:"connected"`
 }
 
+type WebProxyConfig struct {
+	Enabled      bool   `json:"enabled"`
+	HostMode     string `json:"host_mode"` // "ip" или "domain"
+	CustomDomain string `json:"custom_domain"`
+	Port         int    `json:"port"`
+	Secret       string `json:"secret"`
+	WSPath       string `json:"ws_path"`
+	FallbackURL  string `json:"fallback_url"`
+	MaxClients   int    `json:"max_clients"`
+	UpstreamType string `json:"upstream_type"` // "direct" или "vless"
+	VlessURL     string `json:"vless_url"`
+}
+
+type MTProtoConfig struct {
+	Enabled       bool   `json:"enabled"`
+	HostMode      string `json:"host_mode"` // "ip" или "domain"
+	CustomDomain  string `json:"custom_domain"`
+	Port          int    `json:"port"`
+	Secret        string `json:"secret"`
+	FakeTLSDomain string `json:"fake_tls_domain"`
+	AdTag         string `json:"ad_tag"`
+	MaxClients    int    `json:"max_clients"`
+	UpstreamType  string `json:"upstream_type"`
+	VlessURL      string `json:"vless_url"`
+}
+
 type NodeStatus struct {
 	ID          string          `json:"id"`
 	Name        string          `json:"name"`
@@ -39,29 +65,16 @@ type NodeStatus struct {
 	IsOnline    bool            `json:"is_online"`
 	ActiveConns []ClientSession `json:"active_conns"`
 	UptimeSec   int64           `json:"uptime_sec"`
+	WebProxy    WebProxyConfig  `json:"web_proxy"`
+	MTProto     MTProtoConfig   `json:"mtproto"`
 }
 
 type GlobalState struct {
-	mu                 sync.RWMutex          `json:"-"`
-	AdminUser          string                `json:"admin_user"`
-	AdminPassword      string                `json:"admin_password"`
-
-	WebProxyEnabled    bool                  `json:"web_proxy_enabled"`
-	Port               int                   `json:"port"`
-	Domain             string                `json:"domain"`
-	WSPath             string                `json:"ws_path"`
-	FallbackURL        string                `json:"fallback_url"`
-
-	MTProtoEnabled     bool                  `json:"mtproto_enabled"`
-	MTProtoPort        int                   `json:"mtproto_port"`
-	MTProtoSecret      string                `json:"mtproto_secret"`
-	MTProtoSNI         string                `json:"mtproto_sni"`
-
-	VlessUpstream      string                `json:"vless_upstream"`
-	VlessEnabled       bool                  `json:"vless_enabled"`
-
-	BlacklistCIDR      []string              `json:"blacklist_cidr"`
-	BlacklistCountries []string              `json:"blacklist_countries"`
+	mu                 sync.RWMutex           `json:"-"`
+	AdminUser          string                 `json:"admin_user"`
+	AdminPassword      string                 `json:"admin_password"`
+	BlacklistCIDR      []string               `json:"blacklist_cidr"`
+	BlacklistCountries []string               `json:"blacklist_countries"`
 	Nodes              map[string]*NodeStatus `json:"nodes"`
 }
 
@@ -72,22 +85,48 @@ var (
 	state     = GlobalState{
 		AdminUser:          "admin",
 		AdminPassword:      "admin",
-		WebProxyEnabled:    true,
-		Port:               443,
-		Domain:             "tg-web.myproxynode.org",
-		WSPath:             "/api/v1/tg-gateway",
-		FallbackURL:        "https://ya.ru",
-		MTProtoEnabled:     true,
-		MTProtoPort:        8443,
-		MTProtoSecret:      "ee16c80102030405060708090a0b0c0d0e79616e6465782e7275",
-		MTProtoSNI:         "yandex.ru",
-		VlessUpstream:      "",
-		VlessEnabled:       false,
 		BlacklistCIDR:      []string{"185.220.101.0/24"},
 		BlacklistCountries: []string{"CN", "IR"},
 		Nodes:              make(map[string]*NodeStatus),
 	}
 )
+
+func genHex(n int) string {
+	b := make([]byte, n)
+	rand.Read(b)
+	return hex.EncodeToString(b)
+}
+
+func defaultWebConfig() WebProxyConfig {
+	return WebProxyConfig{
+		Enabled:      true,
+		HostMode:     "ip",
+		CustomDomain: "",
+		Port:         443,
+		Secret:       genHex(16),
+		WSPath:       "/",
+		FallbackURL:  "https://ya.ru",
+		MaxClients:   0,
+		UpstreamType: "direct",
+		VlessURL:     "",
+	}
+}
+
+func defaultMTProtoConfig() MTProtoConfig {
+	domainHex := hex.EncodeToString([]byte("yandex.ru"))
+	return MTProtoConfig{
+		Enabled:       true,
+		HostMode:      "ip",
+		CustomDomain:  "",
+		Port:          8443,
+		Secret:        "ee" + genHex(16) + domainHex,
+		FakeTLSDomain: "yandex.ru",
+		AdTag:         "",
+		MaxClients:    0,
+		UpstreamType:  "direct",
+		VlessURL:      "",
+	}
+}
 
 func saveState() {
 	state.mu.RLock()
@@ -105,12 +144,6 @@ func loadState() {
 		_ = json.Unmarshal(data, &state)
 		state.mu.Unlock()
 	}
-}
-
-func generateToken(n int) string {
-	b := make([]byte, n)
-	rand.Read(b)
-	return hex.EncodeToString(b)
 }
 
 func authMiddleware(next http.HandlerFunc) http.HandlerFunc {
@@ -135,7 +168,6 @@ func authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 func main() {
 	loadState()
 
-	// Фоновый чекер активности нод
 	go func() {
 		for {
 			time.Sleep(5 * time.Second)
@@ -148,7 +180,6 @@ func main() {
 		}
 	}()
 
-	// Раздача бинарника агента
 	http.HandleFunc("/agent-bin", func(w http.ResponseWriter, r *http.Request) {
 		agentPath := "/root/telegate-agent"
 		if _, err := os.Stat(agentPath); os.IsNotExist(err) {
@@ -157,7 +188,6 @@ func main() {
 		http.ServeFile(w, r, agentPath)
 	})
 
-	// Bootstrap скрипт для подключения ноды
 	http.HandleFunc("/bootstrap", func(w http.ResponseWriter, r *http.Request) {
 		token := r.URL.Query().Get("token")
 		nodeID := r.URL.Query().Get("id")
@@ -166,13 +196,15 @@ func main() {
 		script := fmt.Sprintf(`#!/usr/bin/env bash
 set -e
 echo "=== [TeleGate] Подключение ноды %s к панели ==="
+systemctl stop telegate-agent 2>/dev/null || true
+rm -f /usr/local/bin/telegate-agent
 
 if ! command -v sing-box &> /dev/null; then
     echo "-> Установка ядра Sing-box..."
     bash -c "$(curl -fsSL https://sing-box.app/install.sh)" || true
 fi
 
-echo "-> Скачивание бинарника агента TeleGate..."
+echo "-> Загрузка агента TeleGate..."
 curl -fsSL "http://%s/agent-bin" -o /usr/local/bin/telegate-agent
 chmod +x /usr/local/bin/telegate-agent
 
@@ -184,7 +216,7 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/telegate-agent -master "http://%s" -token "%s" -id "%s" -port %d
+ExecStart=/usr/local/bin/telegate-agent -master "http://%s" -token "%s" -id "%s"
 Restart=always
 RestartSec=3
 
@@ -195,14 +227,13 @@ SERVICE
 systemctl daemon-reload
 systemctl enable --now telegate-agent
 systemctl restart telegate-agent
-echo "=== Нода успешно запущена и подключена к панели! ==="
-`, nodeID, host, host, token, nodeID, state.Port)
+echo "=== Нода успешно подключена к панели! ==="
+`, nodeID, host, host, token, nodeID)
 
 		w.Header().Set("Content-Type", "text/plain")
 		w.Write([]byte(script))
 	})
 
-	// Auth API
 	http.HandleFunc("/api/auth/login", func(w http.ResponseWriter, r *http.Request) {
 		var creds struct {
 			Username string `json:"username"`
@@ -221,7 +252,10 @@ echo "=== Нода успешно запущена и подключена к п
 			return
 		}
 
-		token := generateToken(32)
+		b := make([]byte, 32)
+		rand.Read(b)
+		token := hex.EncodeToString(b)
+
 		sessMu.Lock()
 		sessions[token] = time.Now().Add(24 * time.Hour)
 		sessMu.Unlock()
@@ -271,29 +305,6 @@ echo "=== Нода успешно запущена и подключена к п
 		w.Write([]byte(`{"username":"admin","status":"authenticated"}`))
 	})
 
-	http.HandleFunc("/api/auth/password", authMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		var req struct {
-			OldPassword string `json:"old_password"`
-			NewPassword string `json:"new_password"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || len(req.NewPassword) < 4 {
-			http.Error(w, "Пароль должен быть от 4 символов", http.StatusBadRequest)
-			return
-		}
-		state.mu.Lock()
-		if req.OldPassword != state.AdminPassword {
-			state.mu.Unlock()
-			http.Error(w, "Текущий пароль неверен", http.StatusForbidden)
-			return
-		}
-		state.AdminPassword = req.NewPassword
-		state.mu.Unlock()
-		saveState()
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"status":"success"}`))
-	}))
-
-	// State & Config
 	http.HandleFunc("/api/state", authMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		state.mu.RLock()
 		defer state.mu.RUnlock()
@@ -301,41 +312,26 @@ echo "=== Нода успешно запущена и подключена к п
 		json.NewEncoder(w).Encode(state)
 	}))
 
-	http.HandleFunc("/api/config/save", authMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		var payload struct {
-			WebProxyEnabled bool   `json:"web_proxy_enabled"`
-			Port            int    `json:"port"`
-			Domain          string `json:"domain"`
-			WSPath          string `json:"ws_path"`
-			FallbackURL     string `json:"fallback_url"`
-
-			MTProtoEnabled  bool   `json:"mtproto_enabled"`
-			MTProtoPort     int    `json:"mtproto_port"`
-			MTProtoSecret   string `json:"mtproto_secret"`
-			MTProtoSNI      string `json:"mtproto_sni"`
-
-			VlessUpstream   string `json:"vless_upstream"`
-			VlessEnabled    bool   `json:"vless_enabled"`
+	http.HandleFunc("/api/nodes/save-proxy", authMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			NodeID   string         `json:"node_id"`
+			WebProxy WebProxyConfig `json:"web_proxy"`
+			MTProto  MTProtoConfig  `json:"mtproto"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.NodeID == "" {
+			http.Error(w, "Bad request", http.StatusBadRequest)
 			return
 		}
 
 		state.mu.Lock()
-		state.WebProxyEnabled = payload.WebProxyEnabled
-		state.Port = payload.Port
-		state.Domain = payload.Domain
-		state.WSPath = payload.WSPath
-		state.FallbackURL = payload.FallbackURL
-
-		state.MTProtoEnabled = payload.MTProtoEnabled
-		state.MTProtoPort = payload.MTProtoPort
-		state.MTProtoSecret = payload.MTProtoSecret
-		state.MTProtoSNI = payload.MTProtoSNI
-
-		state.VlessUpstream = payload.VlessUpstream
-		state.VlessEnabled = payload.VlessEnabled
+		node, exists := state.Nodes[req.NodeID]
+		if !exists {
+			state.mu.Unlock()
+			http.Error(w, "Нода не найдена", http.StatusNotFound)
+			return
+		}
+		node.WebProxy = req.WebProxy
+		node.MTProto = req.MTProto
 		state.mu.Unlock()
 
 		saveState()
@@ -343,7 +339,6 @@ echo "=== Нода успешно запущена и подключена к п
 		w.Write([]byte(`{"status":"success"}`))
 	}))
 
-	// Ноды
 	http.HandleFunc("/api/nodes/create", authMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
 			Name string `json:"name"`
@@ -354,8 +349,8 @@ echo "=== Нода успешно запущена и подключена к п
 			return
 		}
 
-		nodeID := "node-" + generateToken(4)
-		token := "tok_" + generateToken(16)
+		nodeID := "node-" + genHex(4)
+		token := "tok_" + genHex(16)
 
 		state.mu.Lock()
 		state.Nodes[nodeID] = &NodeStatus{
@@ -366,6 +361,8 @@ echo "=== Нода успешно запущена и подключена к п
 			LastSeen:    time.Now(),
 			IsOnline:    false,
 			ActiveConns: []ClientSession{},
+			WebProxy:    defaultWebConfig(),
+			MTProto:     defaultMTProtoConfig(),
 		}
 		state.mu.Unlock()
 		saveState()
@@ -386,12 +383,9 @@ echo "=== Нода успешно запущена и подключена к п
 		w.WriteHeader(http.StatusOK)
 	}))
 
-	// Черные списки
 	http.HandleFunc("/api/blacklist/ip", authMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
-			var body struct {
-				IP string `json:"ip"`
-			}
+			var body struct{ IP string `json:"ip"` }
 			if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.IP == "" {
 				http.Error(w, "Bad request", http.StatusBadRequest)
 				return
@@ -422,9 +416,7 @@ echo "=== Нода успешно запущена и подключена к п
 
 	http.HandleFunc("/api/blacklist/country", authMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
-			var body struct {
-				Country string `json:"country"`
-			}
+			var body struct{ Country string `json:"country"` }
 			if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Country == "" {
 				http.Error(w, "Bad request", http.StatusBadRequest)
 				return
@@ -453,7 +445,6 @@ echo "=== Нода успешно запущена и подключена к п
 		}
 	}))
 
-	// Heartbeat от ноды
 	http.HandleFunc("/api/agent/heartbeat", func(w http.ResponseWriter, r *http.Request) {
 		var payload struct {
 			NodeID            string          `json:"node_id"`
@@ -479,30 +470,35 @@ echo "=== Нода успешно запущена и подключена к п
 	})
 
 	http.HandleFunc("/api/agent/config", func(w http.ResponseWriter, r *http.Request) {
+		nodeID := r.URL.Query().Get("node_id")
+
 		state.mu.RLock()
-		defer state.mu.RUnlock()
+		node, exists := state.Nodes[nodeID]
+		blCIDR := state.BlacklistCIDR
+		blCountries := state.BlacklistCountries
+		state.mu.RUnlock()
+
+		if !exists {
+			http.Error(w, "Node not found", http.StatusNotFound)
+			return
+		}
 
 		vlessTarget := ""
-		if state.VlessEnabled {
-			vlessTarget = state.VlessUpstream
+		if node.WebProxy.UpstreamType == "vless" {
+			vlessTarget = node.WebProxy.VlessURL
 		}
 
 		cfgJSON, err := generator.BuildDualProxyConfig(generator.ProxyOptions{
-			WebProxyEnabled:    state.WebProxyEnabled,
-			WebProxyPort:       state.Port,
-			MTProtoEnabled:     state.MTProtoEnabled,
-			MTProtoPort:        state.MTProtoPort,
-			MTProtoSecret:      state.MTProtoSecret,
-			MTProtoSNI:         state.MTProtoSNI,
+			WebProxyEnabled:    node.WebProxy.Enabled,
+			WebProxyPort:       node.WebProxy.Port,
+			MTProtoEnabled:     node.MTProto.Enabled,
+			MTProtoPort:        node.MTProto.Port,
+			MTProtoSecret:      node.MTProto.Secret,
+			MTProtoSNI:         node.MTProto.FakeTLSDomain,
 			VlessURL:           vlessTarget,
-			BlacklistCIDR:      state.BlacklistCIDR,
-			BlacklistCountries: state.BlacklistCountries,
+			BlacklistCIDR:      blCIDR,
+			BlacklistCountries: blCountries,
 		})
-			state.Port,
-			vlessTarget,
-			state.BlacklistCIDR,
-			state.BlacklistCountries,
-		)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -511,7 +507,6 @@ echo "=== Нода успешно запущена и подключена к п
 		w.Write(cfgJSON)
 	})
 
-	// UI
 	subFS, err := fs.Sub(uiFS, "ui")
 	if err == nil {
 		http.Handle("/", http.FileServer(http.FS(subFS)))
