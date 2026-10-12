@@ -1,0 +1,27 @@
+name: Build & Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.22'
+
+    - name: Run Tests
+      run: go test -v ./internal/generator/...
+
+    - name: Build Master Panel
+      run: CGO_ENABLED=0 go build -v -o telegate-panel ./cmd/panel
+
+    - name: Build Node Agent
+      run: CGO_ENABLED=0 go build -v -o telegate-agent ./cmd/agent

@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 )
 
@@ -27,30 +28,62 @@ type ClientConn struct {
 
 func main() {
 	masterURL := flag.String("master", "http://localhost:8080", "Адрес мастер-панели")
-	token := flag.String("token", "", "Секретный токен ноды")
+	token := flag.String("token", "", "Секретный токен авторизации ноды")
 	nodeID := flag.String("id", "node-auto", "Идентификатор ноды")
+	proxyPort := flag.Int("port", 443, "Порт прокси для отслеживания сокетов")
 	flag.Parse()
 
-	log.Printf("[TeleGate Agent] Запуск ноды %s (Master: %s)...", *nodeID, *masterURL)
+	log.Printf("[TeleGate Agent] Нода %s активна. Синхронизация с %s...", *nodeID, *masterURL)
 
 	startTime := time.Now()
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 
 	for range ticker.C {
-		sendHeartbeat(*masterURL, *token, *nodeID, int64(time.Since(startTime).Seconds()))
+		conns := collectActiveSockets(*proxyPort)
+		sendHeartbeat(*masterURL, *token, *nodeID, int64(time.Since(startTime).Seconds()), conns)
 		pullAndApplyConfig(*masterURL, *token, *nodeID)
 	}
 }
 
-func sendHeartbeat(masterURL, token, nodeID string, uptime int64) {
+// collectActiveSockets парсит вывод ss для получения реальных входящих IP клиентов
+func collectActiveSockets(port int) []ClientConn {
+	out, err := exec.Command("ss", "-nt", fmt.Sprintf("sport = :%d", port)).Output()
+	if err != nil {
+		return []ClientConn{}
+	}
+
+	lines := strings.Split(string(out), "\n")
+	var conns []ClientConn
+	seen := make(map[string]bool)
+
+	for _, line := range lines {
+		fields := strings.Fields(line)
+		if len(fields) >= 5 && fields[0] == "ESTAB" {
+			peer := fields[4]
+			ip := peer
+			if idx := strings.LastIndex(peer, ":"); idx != -1 {
+				ip = peer[:idx]
+			}
+			ip = strings.Trim(ip, "[]")
+			if ip != "" && !seen[ip] {
+				seen[ip] = true
+				conns = append(conns, ClientConn{
+					IP:        ip,
+					Protocol:  "Web Proxy",
+					BytesSent: 1024 * 1024,
+				})
+			}
+		}
+	}
+	return conns
+}
+
+func sendHeartbeat(masterURL, token, nodeID string, uptime int64, conns []ClientConn) {
 	payload := HeartbeatPayload{
-		NodeID:        nodeID,
-		UptimeSeconds: uptime,
-		ActiveConnections: []ClientConn{
-			{IP: "178.62.204.15", Protocol: "web-proxy", BytesSent: 42800000},
-			{IP: "91.108.56.110", Protocol: "mtproto", BytesSent: 120400000},
-		},
+		NodeID:            nodeID,
+		UptimeSeconds:     uptime,
+		ActiveConnections: conns,
 	}
 
 	body, _ := json.Marshal(payload)
