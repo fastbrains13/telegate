@@ -171,7 +171,7 @@
               <select id="proxy-node-select" onchange="onNodeSelectChange()" class="text-xs px-3.5 py-2 rounded-lg border border-zinc-700 bg-zinc-900 text-zinc-100 outline-none font-semibold"></select>
             </div>
             <div class="flex items-center gap-2">
-              <button onclick="saveCurrentNodeProxy()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold shadow-md transition">
+              <button id="btn-save-proxy" type="button" onclick="saveCurrentNodeProxy()" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold shadow-md transition">
                 💾 Сохранить и применить на ноде
               </button>
             </div>
@@ -188,7 +188,7 @@
                 </div>
                 <label class="inline-flex items-center gap-2 text-xs font-medium text-zinc-400 cursor-pointer">
                   <span>Включен</span>
-                  <input id="web-enabled" type="checkbox" onchange="markDirty()" class="w-4 h-4 accent-indigo-600">
+                  <input id="web-enabled" type="checkbox" onchange="updateClientLinks()" class="w-4 h-4 accent-indigo-600">
                 </label>
               </div>
 
@@ -197,25 +197,25 @@
                 <label class="block text-xs font-medium text-zinc-400">Адрес подключения (Host):</label>
                 <div class="grid grid-cols-2 gap-2">
                   <label class="flex items-center gap-2 p-2.5 rounded-lg border border-zinc-800 bg-zinc-950/60 text-xs cursor-pointer">
-                    <input type="radio" name="web-host-mode" value="ip" onchange="toggleWebHostMode(); markDirty();" checked class="accent-indigo-600">
+                    <input type="radio" name="web-host-mode" value="ip" onchange="toggleWebHostMode()" checked class="accent-indigo-600">
                     <span>IP узла (<span id="web-ip-preview" class="font-mono text-zinc-300">--</span>)</span>
                   </label>
                   <label class="flex items-center gap-2 p-2.5 rounded-lg border border-zinc-800 bg-zinc-950/60 text-xs cursor-pointer">
-                    <input type="radio" name="web-host-mode" value="domain" onchange="toggleWebHostMode(); markDirty();" class="accent-indigo-600">
+                    <input type="radio" name="web-host-mode" value="domain" onchange="toggleWebHostMode()" class="accent-indigo-600">
                     <span>Свой домен</span>
                   </label>
                 </div>
-                <input id="web-custom-domain" type="text" oninput="markDirty()" placeholder="например, ge2.sa.fbinfo.ru" class="hidden w-full text-xs px-3 py-2 rounded-lg border border-zinc-700 bg-transparent outline-none font-mono">
+                <input id="web-custom-domain" type="text" oninput="updateClientLinks()" placeholder="например, ge2.sa.fbinfo.ru" class="hidden w-full text-xs px-3 py-2 rounded-lg border border-zinc-700 bg-transparent outline-none font-mono">
               </div>
 
               <div class="grid grid-cols-2 gap-4">
                 <div>
                   <label class="block text-xs font-medium text-zinc-400 mb-1">Порт прослушивания *</label>
-                  <input id="web-port" type="number" oninput="markDirty()" value="443" class="w-full text-xs px-3 py-2 rounded-lg border border-zinc-700 bg-transparent outline-none font-mono">
+                  <input id="web-port" type="number" oninput="updateClientLinks()" value="443" class="w-full text-xs px-3 py-2 rounded-lg border border-zinc-700 bg-transparent outline-none font-mono">
                 </div>
                 <div>
                   <label class="block text-xs font-medium text-zinc-400 mb-1">WebSocket Path</label>
-                  <input id="web-wspath" type="text" oninput="markDirty()" value="/" placeholder="/" class="w-full text-xs px-3 py-2 rounded-lg border border-zinc-700 bg-transparent outline-none font-mono">
+                  <input id="web-wspath" type="text" value="/" placeholder="/" class="w-full text-xs px-3 py-2 rounded-lg border border-zinc-700 bg-transparent outline-none font-mono">
                 </div>
               </div>
 
@@ -224,30 +224,30 @@
                   <label class="text-xs font-medium text-zinc-400">Секрет (32 hex-символа) *</label>
                   <button type="button" onclick="generateWebSecret()" class="text-[11px] text-indigo-400 hover:text-indigo-300">🎲 Сгенерировать</button>
                 </div>
-                <input id="web-secret" type="text" oninput="markDirty()" class="w-full text-xs px-3 py-2 rounded-lg border border-zinc-700 bg-transparent outline-none font-mono">
+                <input id="web-secret" type="text" oninput="updateClientLinks()" class="w-full text-xs px-3 py-2 rounded-lg border border-zinc-700 bg-transparent outline-none font-mono">
               </div>
 
               <div>
                 <label class="block text-xs font-medium text-zinc-400 mb-1">Fallback Web-Site (Self-steal)</label>
-                <input id="web-fallback" type="text" oninput="markDirty()" value="https://ya.ru" class="w-full text-xs px-3 py-2 rounded-lg border border-zinc-700 bg-transparent outline-none">
+                <input id="web-fallback" type="text" value="https://ya.ru" class="w-full text-xs px-3 py-2 rounded-lg border border-zinc-700 bg-transparent outline-none">
               </div>
 
               <div class="p-3 rounded-lg border border-zinc-800 bg-zinc-950/40 space-y-2">
                 <div class="flex items-center justify-between">
                   <span class="text-xs font-semibold">Исходящий трафик (Upstream Relay)</span>
-                  <select id="web-upstream-type" onchange="toggleWebUpstream(); markDirty();" class="text-xs px-2 py-1 rounded bg-zinc-800 border border-zinc-700">
+                  <select id="web-upstream-type" onchange="toggleWebUpstream()" class="text-xs px-2 py-1 rounded bg-zinc-800 border border-zinc-700">
                     <option value="direct">Direct (Напрямую)</option>
                     <option value="vless">VLESS + Reality</option>
                   </select>
                 </div>
-                <input id="web-vless-url" type="text" oninput="markDirty()" placeholder="vless://...@...:443?..." class="hidden w-full text-xs px-3 py-2 rounded-lg border border-zinc-700 bg-transparent outline-none font-mono">
+                <input id="web-vless-url" type="text" placeholder="vless://...@...:443?..." class="hidden w-full text-xs px-3 py-2 rounded-lg border border-zinc-700 bg-transparent outline-none font-mono">
               </div>
 
               <div class="pt-2 border-t border-zinc-800 space-y-2">
                 <span class="text-xs font-semibold block text-indigo-400">Клиентская ссылка Telegram:</span>
                 <div class="flex items-center gap-2">
                   <input id="web-client-link" readonly class="flex-1 text-[11px] font-mono p-2.5 rounded-lg border border-zinc-800 bg-zinc-950 text-zinc-300 select-all outline-none">
-                  <button onclick="copyToClipboard('web-client-link')" class="px-3 py-2.5 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-xs font-medium">Копировать</button>
+                  <button type="button" onclick="copyToClipboard('web-client-link')" class="px-3 py-2.5 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-xs font-medium">Копировать</button>
                 </div>
               </div>
             </div>
@@ -261,7 +261,7 @@
                 </div>
                 <label class="inline-flex items-center gap-2 text-xs font-medium text-zinc-400 cursor-pointer">
                   <span>Включен</span>
-                  <input id="mtproto-enabled" type="checkbox" onchange="markDirty()" class="w-4 h-4 accent-emerald-600">
+                  <input id="mtproto-enabled" type="checkbox" onchange="updateClientLinks()" class="w-4 h-4 accent-emerald-600">
                 </label>
               </div>
 
@@ -270,25 +270,25 @@
                 <label class="block text-xs font-medium text-zinc-400">Адрес подключения (Host):</label>
                 <div class="grid grid-cols-2 gap-2">
                   <label class="flex items-center gap-2 p-2.5 rounded-lg border border-zinc-800 bg-zinc-950/60 text-xs cursor-pointer">
-                    <input type="radio" name="mtproto-host-mode" value="ip" onchange="toggleMTProtoHostMode(); markDirty();" checked class="accent-emerald-600">
+                    <input type="radio" name="mtproto-host-mode" value="ip" onchange="toggleMTProtoHostMode()" checked class="accent-emerald-600">
                     <span>IP узла (<span id="mtproto-ip-preview" class="font-mono text-zinc-300">--</span>)</span>
                   </label>
                   <label class="flex items-center gap-2 p-2.5 rounded-lg border border-zinc-800 bg-zinc-950/60 text-xs cursor-pointer">
-                    <input type="radio" name="mtproto-host-mode" value="domain" onchange="toggleMTProtoHostMode(); markDirty();" class="accent-emerald-600">
+                    <input type="radio" name="mtproto-host-mode" value="domain" onchange="toggleMTProtoHostMode()" class="accent-emerald-600">
                     <span>Свой домен</span>
                   </label>
                 </div>
-                <input id="mtproto-custom-domain" type="text" oninput="markDirty()" placeholder="например, ge2.sa.fbinfo.ru" class="hidden w-full text-xs px-3 py-2 rounded-lg border border-zinc-700 bg-transparent outline-none font-mono">
+                <input id="mtproto-custom-domain" type="text" oninput="updateClientLinks()" placeholder="например, ge2.sa.fbinfo.ru" class="hidden w-full text-xs px-3 py-2 rounded-lg border border-zinc-700 bg-transparent outline-none font-mono">
               </div>
 
               <div class="grid grid-cols-2 gap-4">
                 <div>
                   <label class="block text-xs font-medium text-zinc-400 mb-1">Порт прослушивания *</label>
-                  <input id="mtproto-port" type="number" oninput="markDirty()" value="8443" class="w-full text-xs px-3 py-2 rounded-lg border border-zinc-700 bg-transparent outline-none font-mono">
+                  <input id="mtproto-port" type="number" oninput="updateClientLinks()" value="8443" class="w-full text-xs px-3 py-2 rounded-lg border border-zinc-700 bg-transparent outline-none font-mono">
                 </div>
                 <div>
                   <label class="block text-xs font-medium text-zinc-400 mb-1">Fake TLS домен *</label>
-                  <input id="mtproto-faketls-domain" type="text" oninput="markDirty()" value="yandex.ru" class="w-full text-xs px-3 py-2 rounded-lg border border-zinc-700 bg-transparent outline-none">
+                  <input id="mtproto-faketls-domain" type="text" value="yandex.ru" onchange="generateMTProtoSecret()" class="w-full text-xs px-3 py-2 rounded-lg border border-zinc-700 bg-transparent outline-none">
                 </div>
               </div>
 
@@ -297,36 +297,36 @@
                   <label class="text-xs font-medium text-zinc-400">Fake-TLS Секрет (ee + 16 hex + домен) *</label>
                   <button type="button" onclick="generateMTProtoSecret()" class="text-[11px] text-emerald-400 hover:text-emerald-300">🎲 Сгенерировать</button>
                 </div>
-                <input id="mtproto-secret" type="text" oninput="markDirty()" class="w-full text-xs px-3 py-2 rounded-lg border border-zinc-700 bg-transparent outline-none font-mono">
+                <input id="mtproto-secret" type="text" oninput="updateClientLinks()" class="w-full text-xs px-3 py-2 rounded-lg border border-zinc-700 bg-transparent outline-none font-mono">
               </div>
 
               <div class="grid grid-cols-2 gap-4">
                 <div>
                   <label class="block text-xs font-medium text-zinc-400 mb-1">Промо тег (Ad Tag)</label>
-                  <input id="mtproto-adtag" type="text" oninput="markDirty()" placeholder="например, 1234abcd" class="w-full text-xs px-3 py-2 rounded-lg border border-zinc-700 bg-transparent outline-none font-mono">
+                  <input id="mtproto-adtag" type="text" placeholder="например, 1234abcd" class="w-full text-xs px-3 py-2 rounded-lg border border-zinc-700 bg-transparent outline-none font-mono">
                 </div>
                 <div>
                   <label class="block text-xs font-medium text-zinc-400 mb-1">Лимит подключений</label>
-                  <input id="mtproto-maxclients" type="number" oninput="markDirty()" value="0" placeholder="0 = без лимита" class="w-full text-xs px-3 py-2 rounded-lg border border-zinc-700 bg-transparent outline-none font-mono">
+                  <input id="mtproto-maxclients" type="number" value="0" placeholder="0 = без лимита" class="w-full text-xs px-3 py-2 rounded-lg border border-zinc-700 bg-transparent outline-none font-mono">
                 </div>
               </div>
 
               <div class="p-3 rounded-lg border border-zinc-800 bg-zinc-950/40 space-y-2">
                 <div class="flex items-center justify-between">
                   <span class="text-xs font-semibold">Исходящий трафик (Upstream Relay)</span>
-                  <select id="mtproto-upstream-type" onchange="toggleMTProtoUpstream(); markDirty();" class="text-xs px-2 py-1 rounded bg-zinc-800 border border-zinc-700">
+                  <select id="mtproto-upstream-type" onchange="toggleMTProtoUpstream()" class="text-xs px-2 py-1 rounded bg-zinc-800 border border-zinc-700">
                     <option value="direct">Direct (Напрямую)</option>
                     <option value="vless">VLESS + Reality</option>
                   </select>
                 </div>
-                <input id="mtproto-vless-url" type="text" oninput="markDirty()" placeholder="vless://...@...:443?..." class="hidden w-full text-xs px-3 py-2 rounded-lg border border-zinc-700 bg-transparent outline-none font-mono">
+                <input id="mtproto-vless-url" type="text" placeholder="vless://...@...:443?..." class="hidden w-full text-xs px-3 py-2 rounded-lg border border-zinc-700 bg-transparent outline-none font-mono">
               </div>
 
               <div class="pt-2 border-t border-zinc-800 space-y-2">
                 <span class="text-xs font-semibold block text-emerald-400">Клиентская ссылка Telegram:</span>
                 <div class="flex items-center gap-2">
                   <input id="mtproto-client-link" readonly class="flex-1 text-[11px] font-mono p-2.5 rounded-lg border border-zinc-800 bg-zinc-950 text-zinc-300 select-all outline-none">
-                  <button onclick="copyToClipboard('mtproto-client-link')" class="px-3 py-2.5 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-xs font-medium">Копировать</button>
+                  <button type="button" onclick="copyToClipboard('mtproto-client-link')" class="px-3 py-2.5 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-xs font-medium">Копировать</button>
                 </div>
               </div>
             </div>
@@ -423,7 +423,6 @@
   <script>
     let globalState = null;
     let currentNodeId = null;
-    let isUserEditing = false;
     let activeTab = 'dashboard';
 
     const countryFlags = {
@@ -432,11 +431,6 @@
       'IN': '🇮🇳 Индия', 'BR': '🇧🇷 Бразилия', 'DE': '🇩🇪 Германия',
       'NL': '🇳🇱 Нидерланды', 'KP': '🇰🇵 КНДР'
     };
-
-    function markDirty() {
-      isUserEditing = true;
-      updateClientLinks();
-    }
 
     function genHexStr(len) {
       const arr = new Uint8Array(len);
@@ -500,18 +494,18 @@
       checkAuth();
     }
 
-    async function loadState(forceRenderForm = false) {
+    async function loadState(initForm = false) {
       try {
         const res = await fetch('/api/state');
         if (!res.ok) return checkAuth();
         globalState = await res.json();
-        render(forceRenderForm);
+        render(initForm);
       } catch (e) {
         console.error(e);
       }
     }
 
-    function render(forceRenderForm = false) {
+    function render(initForm = false) {
       if (!globalState) return;
 
       const nodesList = Object.values(globalState.nodes || {});
@@ -593,8 +587,7 @@
       }
       currentNodeId = select.value;
 
-      // Заполняем форму только при явном переключении или первой загрузке
-      if (forceRenderForm || (!isUserEditing && activeTab !== 'proxies')) {
+      if (initForm) {
         fillNodeProxyForm();
       }
 
@@ -624,7 +617,6 @@
 
     function onNodeSelectChange() {
       currentNodeId = document.getElementById('proxy-node-select').value;
-      isUserEditing = false;
       fillNodeProxyForm();
     }
 
@@ -632,7 +624,6 @@
       switchTab('proxies');
       document.getElementById('proxy-node-select').value = id;
       currentNodeId = id;
-      isUserEditing = false;
       fillNodeProxyForm();
     }
 
@@ -642,8 +633,8 @@
       const web = node.web_proxy || {};
       const mt = node.mtproto || {};
 
-      document.getElementById('web-ip-preview').innerText = node.ip;
-      document.getElementById('mtproto-ip-preview').innerText = node.ip;
+      document.getElementById('web-ip-preview').innerText = node.ip || '';
+      document.getElementById('mtproto-ip-preview').innerText = node.ip || '';
 
       document.getElementById('web-enabled').checked = web.enabled !== undefined ? !!web.enabled : true;
       document.querySelector(`input[name="web-host-mode"][value="${web.host_mode || 'ip'}"]`).checked = true;
@@ -674,13 +665,13 @@
     }
 
     function toggleWebHostMode() {
-      const mode = document.querySelector('input[name="web-host-mode"]:checked').value;
+      const mode = document.querySelector('input[name="web-host-mode"]:checked')?.value || 'ip';
       document.getElementById('web-custom-domain').classList.toggle('hidden', mode !== 'domain');
       updateClientLinks();
     }
 
     function toggleMTProtoHostMode() {
-      const mode = document.querySelector('input[name="mtproto-host-mode"]:checked').value;
+      const mode = document.querySelector('input[name="mtproto-host-mode"]:checked')?.value || 'ip';
       document.getElementById('mtproto-custom-domain').classList.toggle('hidden', mode !== 'domain');
       updateClientLinks();
     }
@@ -697,13 +688,13 @@
 
     function generateWebSecret() {
       document.getElementById('web-secret').value = genHexStr(16);
-      markDirty();
+      updateClientLinks();
     }
 
     function generateMTProtoSecret() {
       const domain = document.getElementById('mtproto-faketls-domain').value.trim() || 'yandex.ru';
       document.getElementById('mtproto-secret').value = 'ee' + genHexStr(16) + strToHex(domain);
-      markDirty();
+      updateClientLinks();
     }
 
     function updateClientLinks() {
@@ -711,18 +702,16 @@
       const node = globalState.nodes[currentNodeId];
 
       const webMode = document.querySelector('input[name="web-host-mode"]:checked')?.value || 'ip';
-      const webHost = (webMode === 'domain' && document.getElementById('web-custom-domain').value.trim()) 
-        ? document.getElementById('web-custom-domain').value.trim() 
-        : node.ip;
-      const webPort = document.getElementById('web-port').value || 443;
-      const webSecret = document.getElementById('web-secret').value || '';
+      const webHostInput = document.getElementById('web-custom-domain').value.trim();
+      const webHost = (webMode === 'domain' && webHostInput) ? webHostInput : node.ip;
+      const webPort = document.getElementById('web-port').value;
+      const webSecret = document.getElementById('web-secret').value;
 
       const mtMode = document.querySelector('input[name="mtproto-host-mode"]:checked')?.value || 'ip';
-      const mtHost = (mtMode === 'domain' && document.getElementById('mtproto-custom-domain').value.trim())
-        ? document.getElementById('mtproto-custom-domain').value.trim()
-        : node.ip;
-      const mtPort = document.getElementById('mtproto-port').value || 8443;
-      const mtSecret = document.getElementById('mtproto-secret').value || '';
+      const mtHostInput = document.getElementById('mtproto-custom-domain').value.trim();
+      const mtHost = (mtMode === 'domain' && mtHostInput) ? mtHostInput : node.ip;
+      const mtPort = document.getElementById('mtproto-port').value;
+      const mtSecret = document.getElementById('mtproto-secret').value;
 
       document.getElementById('web-client-link').value = `tg://webproxy?server=${webHost}&port=${webPort}&secret=${webSecret}`;
       document.getElementById('mtproto-client-link').value = `tg://proxy?server=${mtHost}&port=${mtPort}&secret=${mtSecret}`;
@@ -731,8 +720,8 @@
     async function saveCurrentNodeProxy() {
       if (!currentNodeId) return;
 
-      const webMode = document.querySelector('input[name="web-host-mode"]:checked').value;
-      const mtMode = document.querySelector('input[name="mtproto-host-mode"]:checked').value;
+      const webMode = document.querySelector('input[name="web-host-mode"]:checked')?.value || 'ip';
+      const mtMode = document.querySelector('input[name="mtproto-host-mode"]:checked')?.value || 'ip';
 
       const payload = {
         node_id: currentNodeId,
@@ -740,7 +729,7 @@
           enabled: document.getElementById('web-enabled').checked,
           host_mode: webMode,
           custom_domain: document.getElementById('web-custom-domain').value.trim(),
-          port: parseInt(document.getElementById('web-port').value) || 443,
+          port: parseInt(document.getElementById('web-port').value, 10),
           secret: document.getElementById('web-secret').value.trim(),
           ws_path: document.getElementById('web-wspath').value.trim() || '/',
           fallback_url: document.getElementById('web-fallback').value.trim() || 'https://ya.ru',
@@ -752,27 +741,40 @@
           enabled: document.getElementById('mtproto-enabled').checked,
           host_mode: mtMode,
           custom_domain: document.getElementById('mtproto-custom-domain').value.trim(),
-          port: parseInt(document.getElementById('mtproto-port').value) || 8443,
+          port: parseInt(document.getElementById('mtproto-port').value, 10),
           secret: document.getElementById('mtproto-secret').value.trim(),
           fake_tls_domain: document.getElementById('mtproto-faketls-domain').value.trim(),
           ad_tag: document.getElementById('mtproto-adtag').value.trim(),
-          max_clients: parseInt(document.getElementById('mtproto-maxclients').value) || 0,
+          max_clients: parseInt(document.getElementById('mtproto-maxclients').value, 10) || 0,
           upstream_type: document.getElementById('mtproto-upstream-type').value,
           vless_url: document.getElementById('mtproto-vless-url').value.trim()
         }
       };
 
-      const res = await fetch('/api/nodes/save-proxy', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(payload)
-      });
-      if (res.ok) {
-        isUserEditing = false;
-        alert('Конфигурация прокси успешно сохранена и применена!');
-        loadState(false);
-      } else {
-        alert('Ошибка сохранения');
+      const btn = document.getElementById('btn-save-proxy');
+      btn.innerText = '⏳ Сохранение...';
+
+      try {
+        const res = await fetch('/api/nodes/save-proxy', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+          if (globalState && globalState.nodes[currentNodeId]) {
+            globalState.nodes[currentNodeId].web_proxy = payload.web_proxy;
+            globalState.nodes[currentNodeId].mtproto = payload.mtproto;
+          }
+          btn.innerText = '✅ Сохранено!';
+          setTimeout(() => { btn.innerText = '💾 Сохранить и применить на ноде'; }, 2000);
+        } else {
+          btn.innerText = '💾 Сохранить и применить на ноде';
+          alert('Ошибка сервера: ' + (await res.text()));
+        }
+      } catch (e) {
+        btn.innerText = '💾 Сохранить и применить на ноде';
+        alert('Ошибка сети: ' + e);
       }
     }
 
@@ -780,7 +782,7 @@
       const el = document.getElementById(id);
       el.select();
       navigator.clipboard.writeText(el.value);
-      alert('Ссылка скопирована в буфер обмена!');
+      alert('Ссылка скопирована!');
     }
 
     async function executeBan(ip) {
@@ -790,7 +792,7 @@
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({ip})
         });
-        loadState();
+        loadState(false);
       }
     }
 
@@ -803,12 +805,12 @@
         body: JSON.stringify({ip})
       });
       document.getElementById('input-ban-ip').value = '';
-      loadState();
+      loadState(false);
     }
 
     async function removeBan(ip) {
       await fetch('/api/blacklist/ip?ip=' + encodeURIComponent(ip), { method: 'DELETE' });
-      loadState();
+      loadState(false);
     }
 
     async function addSelectedCountry() {
@@ -821,12 +823,12 @@
         body: JSON.stringify({country: c})
       });
       select.value = '';
-      loadState();
+      loadState(false);
     }
 
     async function removeCountryBan(c) {
       await fetch('/api/blacklist/country?country=' + encodeURIComponent(c), { method: 'DELETE' });
-      loadState();
+      loadState(false);
     }
 
     function openAddNodeModal() {
@@ -839,7 +841,7 @@
 
     function closeAddNodeModal() {
       document.getElementById('add-node-modal').classList.add('hidden');
-      loadState();
+      loadState(false);
     }
 
     async function createNode() {
@@ -863,7 +865,7 @@
     async function deleteNode(id) {
       if (confirm('Удалить ноду из кластера?')) {
         await fetch('/api/nodes/delete?id=' + encodeURIComponent(id));
-        loadState();
+        loadState(false);
       }
     }
 
@@ -882,8 +884,7 @@
     }
 
     setInterval(() => {
-      // Обновляем статистику в фоне, но НЕ перезаписываем поля конфигуратора во время редактирования
-      if (!isUserEditing && activeTab !== 'proxies') {
+      if (activeTab !== 'proxies') {
         loadState(false);
       }
     }, 5000);
