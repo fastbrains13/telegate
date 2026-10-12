@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  telegate-panel:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.panel
+    container_name: telegate-panel
+    restart: always
+    ports:
+      - "8080:8080"
+    volumes:
+      - telegate_data:/data
+    environment:
+      - APP_ENV=production
+      - DB_PATH=/data/telegate.db
+
+volumes:
+  telegate_data:

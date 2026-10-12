@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="ru" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TeleGate — Telegram Proxy & Node Orchestrator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(156, 163, 175, 0.4); border-radius: 9999px; }
+  </style>
+</head>
+<body class="bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 min-h-screen flex antialiased transition-colors duration-200">
+
+  <!-- Sidebar -->
+  <aside class="w-64 border-r border-zinc-200 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/60 flex flex-col justify-between shrink-0">
+    <div>
+      <!-- Logo -->
+      <div class="h-16 flex items-center justify-between px-6 border-b border-zinc-200 dark:border-zinc-800/80">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold shadow-md shadow-indigo-500/20">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          </div>
+          <div>
+            <span class="font-bold tracking-tight text-base block leading-none">TeleGate</span>
+            <span class="text-[11px] text-zinc-400 font-medium tracking-wide">PROXY CONTROL</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Navigation Links -->
+      <nav class="p-3 space-y-1">
+        <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-item w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50/70 dark:bg-indigo-950/40 transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+          <span>Дашборд & Ноды</span>
+        </button>
+
+        <button onclick="switchTab('proxies')" id="nav-proxies" class="nav-item w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+          <span>Конфигуратор прокси</span>
+        </button>
+
+        <button onclick="switchTab('connections')" id="nav-connections" class="nav-item w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+          <span>Подключения & IP</span>
+          <span class="ml-auto text-xs font-semibold px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500">142</span>
+        </button>
+
+        <button onclick="switchTab('security')" id="nav-security" class="nav-item w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+          <span>Черный список & GeoIP</span>
+        </button>
+
+        <button onclick="switchTab('audit')" id="nav-audit" class="nav-item w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          <span>Логи & Аудит</span>
+        </button>
+      </nav>
+    </div>
+
+    <!-- Bottom Controls (Theme toggle & Profile) -->
+    <div class="p-4 border-t border-zinc-200 dark:border-zinc-800/80 space-y-3">
+      <div class="flex items-center justify-between text-xs text-zinc-500">
+        <span>Тема оформления</span>
+        <button onclick="toggleTheme()" class="p-1.5 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-300 transition">
+          <svg id="theme-icon-dark" class="w-4 h-4 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+          <svg id="theme-icon-light" class="w-4 h-4 block dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+        </button>
+      </div>
+      <div class="flex items-center gap-3 pt-2">
+        <div class="w-8 h-8 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center font-bold text-xs">AD</div>
+        <div class="text-xs">
+          <div class="font-semibold text-zinc-900 dark:text-zinc-100">admin@root</div>
+          <div class="text-zinc-400">Master Node: Online</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content Area -->
+  <main class="flex-1 flex flex-col min-w-0 overflow-y-auto custom-scrollbar">
+
+    <!-- Topbar -->
+    <header class="h-16 border-b border-zinc-200 dark:border-zinc-800/80 bg-white/70 dark:bg-zinc-900/40 backdrop-blur px-8 flex items-center justify-between sticky top-0 z-20">
+      <div>
+        <h1 id="page-title" class="text-lg font-semibold tracking-tight">Дашборд & Серверные Ноды</h1>
+      </div>
+      <div class="flex items-center gap-3">
+        <button onclick="openModal('add-node-modal')" class="inline-flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 shadow-sm transition">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+          Добавить ноду в 1 клик
+        </button>
+      </div>
+    </header>
+
+    <div class="p-8 max-w-7xl w-full mx-auto space-y-8">
+
+      <!-- ================= TAB 1: DASHBOARD & NODES ================= -->
+      <section id="tab-dashboard" class="space-y-6">
+        <!-- Metric Summary Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div class="p-5 rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 shadow-sm">
+            <span class="text-xs font-medium text-zinc-500">Активные подключения</span>
+            <div class="mt-2 flex items-baseline gap-2">
+              <span class="text-2xl font-bold tracking-tight">142</span>
+              <span class="text-xs text-emerald-500 font-medium">↑ +18 онлайн</span>
+            </div>
+          </div>
+          <div class="p-5 rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 shadow-sm">
+            <span class="text-xs font-medium text-zinc-500">Трафик за сутки</span>
+            <div class="mt-2 flex items-baseline gap-2">
+              <span class="text-2xl font-bold tracking-tight">418.2 GB</span>
+              <span class="text-xs text-zinc-400 font-medium">↑ 12 Mbps текущая</span>
+            </div>
+          </div>
+          <div class="p-5 rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 shadow-sm">
+            <span class="text-xs font-medium text-zinc-500">Заблокировано угроз</span>
+            <div class="mt-2 flex items-baseline gap-2">
+              <span class="text-2xl font-bold tracking-tight text-rose-500">1,894</span>
+              <span class="text-xs text-zinc-400 font-medium">GeoIP & CIDR</span>
+            </div>
+          </div>
+          <div class="p-5 rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 shadow-sm">
+            <span class="text-xs font-medium text-zinc-500">Нод в кластере</span>
+            <div class="mt-2 flex items-baseline gap-2">
+              <span class="text-2xl font-bold tracking-tight">2 / 2</span>
+              <span class="text-xs text-emerald-500 font-medium">100% здоровье</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Node List -->
+        <div class="rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 shadow-sm overflow-hidden">
+          <div class="p-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
+            <h2 class="text-sm font-semibold tracking-tight">Серверы / Ноды</h2>
+            <span class="text-xs text-zinc-500">Агенты синхронизированы через gRPC</span>
+          </div>
+
+          <div class="divide-y divide-zinc-200 dark:divide-zinc-800">
+            <!-- Node Row 1 -->
+            <div class="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30 transition">
+              <div class="flex items-start gap-4">
+                <div class="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center font-bold text-sm shrink-0">
+                  <span class="relative flex h-2.5 w-2.5">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                  </span>
+                </div>
+                <div>
+                  <div class="flex items-center gap-2">
+                    <h3 class="font-semibold text-sm">Node-EU-01 (Amsterdam)</h3>
+                    <span class="text-[11px] font-mono px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300">185.192.110.42</span>
+                    <span class="text-[11px] px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-medium">Web Proxy + MTProto</span>
+                  </div>
+                  <div class="text-xs text-zinc-500 mt-1 flex items-center gap-4">
+                    <span>Upstream: <b class="text-zinc-700 dark:text-zinc-300">VLESS Reality (Frankfurt)</b></span>
+                    <span>Коннекты: <b class="text-zinc-700 dark:text-zinc-300">114</b></span>
+                    <span>CPU: 4% • RAM: 180MB</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-2 self-end md:self-center">
+                <button onclick="switchTab('proxies')" class="px-3 py-1.5 text-xs font-medium rounded-lg border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition">Конфиг прокси</button>
+                <button onclick="switchTab('connections')" class="px-3 py-1.5 text-xs font-medium rounded-lg border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition">IP Клиентов</button>
+                <button class="p-1.5 text-zinc-400 hover:text-zinc-200">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/></svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- Node Row 2 -->
+            <div class="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30 transition">
+              <div class="flex items-start gap-4">
+                <div class="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center font-bold text-sm shrink-0">
+                  <span class="inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                </div>
+                <div>
+                  <div class="flex items-center gap-2">
+                    <h3 class="font-semibold text-sm">Node-FIN-02 (Helsinki)</h3>
+                    <span class="text-[11px] font-mono px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300">95.217.44.18</span>
+                    <span class="text-[11px] px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-medium">MTProto Only</span>
+                  </div>
+                  <div class="text-xs text-zinc-500 mt-1 flex items-center gap-4">
+                    <span>Upstream: <b class="text-zinc-700 dark:text-zinc-300">Direct (TG DC)</b></span>
+                    <span>Коннекты: <b class="text-zinc-700 dark:text-zinc-300">28</b></span>
+                    <span>CPU: 2% • RAM: 94MB</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-2 self-end md:self-center">
+                <button onclick="switchTab('proxies')" class="px-3 py-1.5 text-xs font-medium rounded-lg border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition">Конфиг прокси</button>
+                <button onclick="switchTab('connections')" class="px-3 py-1.5 text-xs font-medium rounded-lg border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition">IP Клиентов</button>
+                <button class="p-1.5 text-zinc-400 hover:text-zinc-200">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= TAB 2: PROXY CONFIGURATOR ================= -->
+      <section id="tab-proxies" class="hidden space-y-6">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+          <!-- Left 2 Cols: Form Config -->
+          <div class="lg:col-span-2 space-y-6">
+
+            <!-- Card 1: Telegram Web Proxy Inbound -->
+            <div class="p-6 rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 shadow-sm space-y-5">
+              <div class="flex items-center justify-between pb-3 border-b border-zinc-200 dark:border-zinc-800">
+                <div class="flex items-center gap-3">
+                  <div class="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-500 flex items-center justify-center">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/></svg>
+                  </div>
+                  <div>
+                    <h3 class="font-semibold text-sm">Telegram Web Proxy (HTTPS / WebSocket)</h3>
+                    <p class="text-xs text-zinc-500">Современная маскировка под веб-трафик (HTTP/2 + TLS)</p>
+                  </div>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer">
+                  <input type="checkbox" checked class="sr-only peer">
+                  <div class="w-9 h-5 bg-zinc-300 dark:bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+                </label>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-xs font-medium text-zinc-500 mb-1">Домен / Хостнейм</label>
+                  <input type="text" value="tg-web.myproxynode.org" class="w-full text-xs px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-transparent focus:ring-1 focus:ring-indigo-500 outline-none">
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-zinc-500 mb-1">Слушающий порт</label>
+                  <input type="text" value="443" class="w-full text-xs px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-transparent focus:ring-1 focus:ring-indigo-500 outline-none font-mono">
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-zinc-500 mb-1">WebSocket / HTTP Path</label>
+                  <input type="text" value="/api/v1/tg-gateway" class="w-full text-xs px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-transparent focus:ring-1 focus:ring-indigo-500 outline-none font-mono">
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-zinc-500 mb-1">Fallback Web-Site (Маскировка)</label>
+                  <input type="text" value="https://ya.ru" class="w-full text-xs px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-transparent focus:ring-1 focus:ring-indigo-500 outline-none">
+                </div>
+              </div>
+            </div>
+
+            <!-- Card 2: Outbound Relay via VLESS -->
+            <div class="p-6 rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 shadow-sm space-y-5">
+              <div class="flex items-center justify-between pb-3 border-b border-zinc-200 dark:border-zinc-800">
+                <div class="flex items-center gap-3">
+                  <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg>
+                  </div>
+                  <div>
+                    <h3 class="font-semibold text-sm">Проброс трафика через VLESS (Upstream Chain)</h3>
+                    <p class="text-xs text-zinc-500">Выход в сеть через сторонний сервер без раскрытия IP ноды</p>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="text-xs font-medium text-zinc-500">Включено</span>
+                  <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" checked class="sr-only peer">
+                    <div class="w-9 h-5 bg-zinc-300 dark:bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-medium text-zinc-500 mb-1">Ссылка VLESS / Конфигурация Upstream</label>
+                <div class="relative">
+                  <textarea rows="3" class="w-full text-xs font-mono px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-transparent focus:ring-1 focus:ring-indigo-500 outline-none leading-relaxed" placeholder="vless://uuid@domain:443?security=reality&sni=...">vless://b83c21a4-9e32-4299-8ab2-94fa108a7b90@fra-core-01.relays.net:443?encryption=none&flow=xtls-rprx-vision&security=reality&sni=speedtest.net&fp=chrome&pbk=Z19xK3L0x9j4...#EU-Relay-Upstream</textarea>
+                </div>
+                <p class="text-[11px] text-zinc-500 mt-1.5">Панель автоматически распарсит параметры шифрования, Reality SNI и Flow для маршрута Sing-box.</p>
+              </div>
+
+              <div class="pt-2 flex justify-end">
+                <button class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-medium transition shadow-sm">
+                  Применить изменения без разрыва сессий (Hot Reload)
+                </button>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Right 1 Col: Quick Links & Ready Client Config -->
+          <div class="space-y-6">
+            <div class="p-6 rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 shadow-sm space-y-4">
+              <h3 class="font-semibold text-sm">Клиентские ссылки для Telegram</h3>
+              
+              <div class="space-y-3">
+                <div class="p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/40">
+                  <div class="flex items-center justify-between mb-1.5">
+                    <span class="text-xs font-semibold">Web Proxy Link</span>
+                    <button class="text-xs text-indigo-500 hover:underline">Копировать</button>
+                  </div>
+                  <input readonly value="https://t.me/proxy?server=tg-web.myproxynode.org&port=443" class="w-full text-[11px] font-mono bg-transparent border-none outline-none text-zinc-400 select-all">
+                </div>
+
+                <div class="p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/40">
+                  <div class="flex items-center justify-between mb-1.5">
+                    <span class="text-xs font-semibold">MTProto Fake-TLS Link</span>
+                    <button class="text-xs text-indigo-500 hover:underline">Копировать</button>
+                  </div>
+                  <input readonly value="tg://proxy?server=185.192.110.42&port=8443&secret=ee16c80...79616e6465782e7275" class="w-full text-[11px] font-mono bg-transparent border-none outline-none text-zinc-400 select-all">
+                </div>
+              </div>
+
+              <div class="pt-2 text-center">
+                <div class="w-36 h-36 mx-auto bg-zinc-100 dark:bg-zinc-800 rounded-lg flex items-center justify-center border border-zinc-200 dark:border-zinc-700/60 text-xs text-zinc-400 font-mono">
+                  [ QR-Code ]
+                </div>
+                <span class="text-[11px] text-zinc-500 mt-2 block">Сканируйте с камеры смартфона</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ================= TAB 3: CONNECTIONS & CLIENT IP ================= -->
+      <section id="tab-connections" class="hidden space-y-6">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div class="flex items-center gap-3">
+            <input type="text" placeholder="Поиск по IP или стране..." class="text-xs px-3.5 py-2 w-64 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-transparent focus:ring-1 focus:ring-indigo-500 outline-none">
+            <select class="text-xs px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 outline-none">
+              <option>Все ноды</option>
+              <option>Node-EU-01 (Amsterdam)</option>
+              <option>Node-FIN-02 (Helsinki)</option>
+            </select>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span class="text-xs text-zinc-500">Live сокеты: обновление каждые 5 сек</span>
+          </div>
+        </div>
+
+        <div class="rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 shadow-sm overflow-hidden">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 font-medium">
+              <tr>
+                <th class="py-3 px-4">Клиентский IP</th>
+                <th class="py-3 px-4">Локация / Провайдер</th>
+                <th class="py-3 px-4">Протокол</th>
+                <th class="py-3 px-4">Маршрут Outbound</th>
+                <th class="py-3 px-4">Трафик</th>
+                <th class="py-3 px-4">Длительность</th>
+                <th class="py-3 px-4 text-right">Действие</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-zinc-200 dark:divide-zinc-800 font-mono">
+              <tr class="hover:bg-zinc-50/60 dark:hover:bg-zinc-800/30 transition">
+                <td class="py-3 px-4 font-semibold text-zinc-900 dark:text-zinc-100">178.62.204.15</td>
+                <td class="py-3 px-4 font-sans text-zinc-600 dark:text-zinc-300">🇳🇱 NL • DigitalOcean</td>
+                <td class="py-3 px-4 font-sans"><span class="px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950 text-indigo-500 font-medium">Web Proxy</span></td>
+                <td class="py-3 px-4 font-sans text-emerald-500">→ VLESS Upstream</td>
+                <td class="py-3 px-4">42.8 MB</td>
+                <td class="py-3 px-4 font-sans text-zinc-500">14 мин</td>
+                <td class="py-3 px-4 text-right">
+                  <button onclick="banIp('178.62.204.15')" class="font-sans px-2.5 py-1 text-[11px] rounded bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white transition">В черный список</button>
+                </td>
+              </tr>
+
+              <tr class="hover:bg-zinc-50/60 dark:hover:bg-zinc-800/30 transition">
+                <td class="py-3 px-4 font-semibold text-zinc-900 dark:text-zinc-100">91.108.56.110</td>
+                <td class="py-3 px-4 font-sans text-zinc-600 dark:text-zinc-300">🇩🇪 DE • Hetzner Online</td>
+                <td class="py-3 px-4 font-sans"><span class="px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-400 font-medium">MTProto</span></td>
+                <td class="py-3 px-4 font-sans text-zinc-400">→ Direct (DC4)</td>
+                <td class="py-3 px-4">120.4 MB</td>
+                <td class="py-3 px-4 font-sans text-zinc-500">1 ч 04 м</td>
+                <td class="py-3 px-4 text-right">
+                  <button onclick="banIp('91.108.56.110')" class="font-sans px-2.5 py-1 text-[11px] rounded bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white transition">В черный список</button>
+                </td>
+              </tr>
+
+              <tr class="hover:bg-zinc-50/60 dark:hover:bg-zinc-800/30 transition">
+                <td class="py-3 px-4 font-semibold text-zinc-900 dark:text-zinc-100">46.242.12.89</td>
+                <td class="py-3 px-4 font-sans text-zinc-600 dark:text-zinc-300">🇷🇺 RU • Rostelecom</td>
+                <td class="py-3 px-4 font-sans"><span class="px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950 text-indigo-500 font-medium">Web Proxy</span></td>
+                <td class="py-3 px-4 font-sans text-emerald-500">→ VLESS Upstream</td>
+                <td class="py-3 px-4">8.1 MB</td>
+                <td class="py-3 px-4 font-sans text-zinc-500">2 мин</td>
+                <td class="py-3 px-4 text-right">
+                  <button onclick="banIp('46.242.12.89')" class="font-sans px-2.5 py-1 text-[11px] rounded bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white transition">В черный список</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ================= TAB 4: BLACKLIST & GEOIP ================= -->
+      <section id="tab-security" class="hidden space-y-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+          <!-- IP & CIDR Blocklist -->
+          <div class="p-6 rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 shadow-sm space-y-4">
+            <div class="flex items-center justify-between pb-3 border-b border-zinc-200 dark:border-zinc-800">
+              <div>
+                <h3 class="font-semibold text-sm">Блокировка IP и Подсетей (CIDR)</h3>
+                <p class="text-xs text-zinc-500">Пакеты отбрасываются до создания туннеля</p>
+              </div>
+              <span class="text-xs font-medium px-2 py-0.5 rounded bg-rose-500/10 text-rose-500">24 правила</span>
+            </div>
+
+            <div>
+              <label class="block text-xs font-medium text-zinc-500 mb-1">Добавить IP или подсеть</label>
+              <div class="flex gap-2">
+                <input id="new-ip-input" type="text" placeholder="например, 198.51.100.4 или 203.0.113.0/24" class="flex-1 text-xs px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-transparent font-mono outline-none">
+                <button onclick="addIpToBlacklist()" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-medium transition">Заблокировать</button>
+              </div>
+            </div>
+
+            <!-- List of Banned Items -->
+            <div class="space-y-2 max-h-60 overflow-y-auto custom-scrollbar pr-1" id="blacklist-container">
+              <div class="flex items-center justify-between p-2.5 rounded-lg border border-zinc-200 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/40 text-xs font-mono">
+                <div>
+                  <span class="font-semibold text-rose-500">185.220.101.0/24</span>
+                  <span class="text-[11px] font-sans text-zinc-400 ml-2">Tor Exit Nodes</span>
+                </div>
+                <button onclick="this.parentElement.remove()" class="text-zinc-400 hover:text-rose-500 font-sans">Удалить</button>
+              </div>
+
+              <div class="flex items-center justify-between p-2.5 rounded-lg border border-zinc-200 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/40 text-xs font-mono">
+                <div>
+                  <span class="font-semibold text-rose-500">45.154.255.8</span>
+                  <span class="text-[11px] font-sans text-zinc-400 ml-2">Агрессивный сканер портов</span>
+                </div>
+                <button onclick="this.parentElement.remove()" class="text-zinc-400 hover:text-rose-500 font-sans">Удалить</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- GeoIP Filter (Country code) -->
+          <div class="p-6 rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 shadow-sm space-y-4">
+            <div class="flex items-center justify-between pb-3 border-b border-zinc-200 dark:border-zinc-800">
+              <div>
+                <h3 class="font-semibold text-sm">Гео-фильтрация (GeoIP Блокировка)</h3>
+                <p class="text-xs text-zinc-500">Используется база MaxMind GeoLite2</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-xs text-zinc-500">Режим: Blacklist</span>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-medium text-zinc-500 mb-2">Заблокированные страны</label>
+              <div class="flex flex-wrap gap-2">
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700">
+                  <span>🇨🇳 Китай (CN)</span>
+                  <button class="hover:text-rose-500">×</button>
+                </span>
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700">
+                  <span>🇮🇷 Иран (IR)</span>
+                  <button class="hover:text-rose-500">×</button>
+                </span>
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700">
+                  <span>🇰🇵 Северная Корея (KP)</span>
+                  <button class="hover:text-rose-500">×</button>
+                </span>
+              </div>
+            </div>
+
+            <div class="pt-3">
+              <label class="block text-xs font-medium text-zinc-500 mb-1">Добавить страну в фильтр</label>
+              <div class="flex gap-2">
+                <select class="flex-1 text-xs px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 outline-none">
+                  <option>Выберите страну для блокировки...</option>
+                  <option>🇺🇸 США (US)</option>
+                  <option>🇮🇳 Индия (IN)</option>
+                  <option>🇧🇷 Бразилия (BR)</option>
+                  <option>🇹🇷 Турция (TR)</option>
+                </select>
+                <button class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-medium transition">Добавить</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ================= TAB 5: AUDIT LOGS ================= -->
+      <section id="tab-audit" class="hidden space-y-4">
+        <div class="p-6 rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-zinc-950 text-zinc-300 font-mono text-xs rounded-xl overflow-x-auto custom-scrollbar shadow-inner space-y-2">
+          <div class="text-zinc-500"># Live Daemon Event Stream (Sing-box + Node Agent)</div>
+          <div><span class="text-zinc-500">[14:02:18]</span> <span class="text-emerald-400">[INBOUND-WEB]</span> Client 178.62.204.15 connected via /api/v1/tg-gateway (TLS 1.3, h2)</div>
+          <div><span class="text-zinc-500">[14:02:19]</span> <span class="text-indigo-400">[ROUTE]</span> Forwarding stream 178.62.204.15 -> Outbound: VLESS Reality (Frankfurt)</div>
+          <div><span class="text-zinc-500">[14:02:35]</span> <span class="text-rose-400">[SECURITY-DROP]</span> 185.220.101.44 matched CIDR Blacklist (185.220.101.0/24) -> TCP RST</div>
+          <div><span class="text-zinc-500">[14:03:01]</span> <span class="text-rose-400">[GEOIP-DROP]</span> 222.186.30.12 matched Country Block (CN) -> Connection Terminated</div>
+          <div><span class="text-zinc-500">[14:03:12]</span> <span class="text-zinc-400">[HEARTBEAT]</span> Node-FIN-02 reported latency 18ms, active connections: 28</div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- ================= MODAL: ADD NODE IN 1-CLICK ================= -->
+  <div id="add-node-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="w-full max-w-lg rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-2xl overflow-hidden">
+      <div class="p-5 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
+        <h3 class="font-semibold text-sm">Подключение новой ноды в 1 клик</h3>
+        <button onclick="closeModal('add-node-modal')" class="text-zinc-400 hover:text-zinc-200 text-lg">×</button>
+      </div>
+
+      <div class="p-6 space-y-5">
+        <!-- Option Selector: SSH vs Curl -->
+        <div class="flex border border-zinc-200 dark:border-zinc-800 rounded-lg p-1 bg-zinc-50 dark:bg-zinc-950 text-xs font-medium">
+          <button class="flex-1 py-1.5 rounded-md bg-white dark:bg-zinc-800 shadow-sm text-zinc-900 dark:text-zinc-100">Через SSH реквизиты</button>
+          <button class="flex-1 py-1.5 rounded-md text-zinc-500 hover:text-zinc-300">Однострочная команда (curl)</button>
+        </div>
+
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs font-medium text-zinc-500 mb-1">Название ноды</label>
+            <input type="text" placeholder="например, Node-DE-Frankfurt" class="w-full text-xs px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-transparent outline-none">
+          </div>
+
+          <div class="grid grid-cols-3 gap-3">
+            <div class="col-span-2">
+              <label class="block text-xs font-medium text-zinc-500 mb-1">IP адрес сервера</label>
+              <input type="text" placeholder="194.87.10.25" class="w-full text-xs px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-transparent outline-none font-mono">
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-zinc-500 mb-1">Порт SSH</label>
+              <input type="text" value="22" class="w-full text-xs px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-transparent outline-none font-mono">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-zinc-500 mb-1">Пароль root или SSH Private Key</label>
+            <input type="password" placeholder="••••••••••••••••" class="w-full text-xs px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-transparent outline-none font-mono">
+          </div>
+        </div>
+
+        <div class="p-3 rounded-lg bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/60 text-[11px] text-indigo-700 dark:text-indigo-300 leading-relaxed">
+          Панель автоматически установит Docker, агента ноды и пропишет безопасный TLS-токен для постоянной связи.
+        </div>
+      </div>
+
+      <div class="p-4 bg-zinc-50 dark:bg-zinc-900/80 border-t border-zinc-200 dark:border-zinc-800 flex justify-end gap-2">
+        <button onclick="closeModal('add-node-modal')" class="px-4 py-2 text-xs font-medium rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition">Отмена</button>
+        <button onclick="simulateAddNode()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-lg transition shadow-sm">Развернуть ноду</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Tab switching
+    const tabs = ['dashboard', 'proxies', 'connections', 'security', 'audit'];
+    const titles = {
+      'dashboard': 'Дашборд & Серверные Ноды',
+      'proxies': 'Конфигуратор прокси & VLESS Upstream',
+      'connections': 'Активные подключения & Список IP',
+      'security': 'Черный список (IP, CIDR & GeoIP)',
+      'audit': 'Системный журнал событий & Логи'
+    };
+
+    function switchTab(tabName) {
+      tabs.forEach(t => {
+        document.getElementById('tab-' + t).classList.add('hidden');
+        const nav = document.getElementById('nav-' + t);
+        if (nav) {
+          nav.className = 'nav-item w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 transition';
+        }
+      });
+
+      document.getElementById('tab-' + tabName).classList.remove('hidden');
+      document.getElementById('page-title').innerText = titles[tabName];
+      const activeNav = document.getElementById('nav-' + tabName);
+      if (activeNav) {
+        activeNav.className = 'nav-item w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50/70 dark:bg-indigo-950/40 transition';
+      }
+    }
+
+    // Modal controls
+    function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+    function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+    // Theme toggler
+    function toggleTheme() {
+      const html = document.documentElement;
+      if (html.classList.contains('dark')) {
+        html.classList.remove('dark');
+      } else {
+        html.classList.add('dark');
+      }
+    }
+
+    // Ban IP simulation
+    function banIp(ip) {
+      if (confirm(`Заблокировать IP ${ip} и разорвать все текущие сессии?`)) {
+        alert(`IP ${ip} успешно добавлен в черный список ядра Sing-box.`);
+      }
+    }
+
+    // Add IP to container
+    function addIpToBlacklist() {
+      const input = document.getElementById('new-ip-input');
+      const val = input.value.trim();
+      if (!val) return;
+      const container = document.getElementById('blacklist-container');
+      const row = document.createElement('div');
+      row.className = "flex items-center justify-between p-2.5 rounded-lg border border-zinc-200 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/40 text-xs font-mono";
+      row.innerHTML = `
+        <div>
+          <span class="font-semibold text-rose-500">${val}</span>
+          <span class="text-[11px] font-sans text-zinc-400 ml-2">Добавлено вручную</span>
+        </div>
+        <button onclick="this.parentElement.remove()" class="text-zinc-400 hover:text-rose-500 font-sans">Удалить</button>
+      `;
+      container.prepend(row);
+      input.value = '';
+    }
+
+    function simulateAddNode() {
+      alert("Скрипт развертывания запущен. Нода успешно добавлена в кластер!");
+      closeModal('add-node-modal');
+    }
+  </script>
+</body>
+</html>

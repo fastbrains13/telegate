@@ -1,0 +1,11 @@
+FROM golang:1.22-alpine AS builder
+WORKDIR /app
+COPY go.mod ./
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -o /telegate-panel ./cmd/panel
+
+FROM alpine:latest
+WORKDIR /root/
+COPY --from=builder /telegate-panel .
+EXPOSE 8080
+CMD ["./telegate-panel"]
