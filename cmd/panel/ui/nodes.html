@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>TeleGate — Управление узлами</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="navbar">
+    <a href="/index.html" class="brand">TeleGate</a>
+    <nav>
+      <a href="/index.html">Дашборд</a>
+      <a href="/nodes.html" class="active">Узлы (+Добавить)</a>
+      <a href="/proxies.html">Настройки прокси</a>
+      <a href="javascript:logout()">Выход</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <!-- Добавление ноды -->
+    <div class="card">
+      <h2>Подключение нового узла</h2>
+      <form id="createNodeForm">
+        <div class="form-group">
+          <label for="newNodeId">Уникальный ID узла (латиница, цифры, дефис)</label>
+          <input type="text" id="newNodeId" class="form-control" placeholder="node-fra-1" required>
+        </div>
+        <div class="form-group">
+          <label for="newNodeName">Название узла</label>
+          <input type="text" id="newNodeName" class="form-control" placeholder="Frankfurt Edge Node">
+        </div>
+        <button type="submit" class="btn btn-success">Сгенерировать команду подключения</button>
+      </form>
+    </div>
+
+    <!-- Инструкция и команда bootstrap -->
+    <div class="card" id="bootstrapCard" style="display: none;">
+      <h2>Команда для установки агента на целевом сервере</h2>
+      <p style="color: var(--text-muted); margin-bottom: 12px; font-size: 0.9rem;">
+        Выполните эту команду от имени <code>root</code> на удаленном сервере. Скрипт скачает агент, настроит systemd-службу и подключит ноду к панели.
+      </p>
+      <div class="input-group">
+        <input type="text" id="bootstrapCommand" class="form-control" readonly style="font-family: var(--font-mono); font-size: 0.85rem;">
+        <button type="button" class="btn" onclick="copyToClipboard(document.getElementById('bootstrapCommand').value)">Копировать</button>
+      </div>
+    </div>
+  </main>
+
+  <script src="app.js"></script>
+  <script>
+    document.getElementById('createNodeForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const nodeId = document.getElementById('newNodeId').value.trim();
+      const nodeName = document.getElementById('newNodeName').value.trim();
+
+      try {
+        const res = await fetch('/api/nodes/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: nodeId, name: nodeName })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          const token = data.token || generateHex(16);
+          const currentOrigin = window.location.origin;
+          
+          const cmd = `curl -sSL "${currentOrigin}/bootstrap?token=${token}&id=${nodeId}" | sudo bash`;
+          document.getElementById('bootstrapCommand').value = cmd;
+          document.getElementById('bootstrapCard').style.display = 'block';
+          showToast('Узел создан! Скопируйте команду установки', 'success');
+        } else {
+          showToast('Ошибка при создании узла', 'error');
+        }
+      } catch (err) {
+        showToast('Сетевая ошибка', 'error');
+      }
+    });
+  </script>
+</body>
+</html>
