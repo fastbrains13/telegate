@@ -45,12 +45,21 @@ type GlobalState struct {
 	mu                 sync.RWMutex          `json:"-"`
 	AdminUser          string                `json:"admin_user"`
 	AdminPassword      string                `json:"admin_password"`
+
+	WebProxyEnabled    bool                  `json:"web_proxy_enabled"`
 	Port               int                   `json:"port"`
 	Domain             string                `json:"domain"`
 	WSPath             string                `json:"ws_path"`
 	FallbackURL        string                `json:"fallback_url"`
+
+	MTProtoEnabled     bool                  `json:"mtproto_enabled"`
+	MTProtoPort        int                   `json:"mtproto_port"`
+	MTProtoSecret      string                `json:"mtproto_secret"`
+	MTProtoSNI         string                `json:"mtproto_sni"`
+
 	VlessUpstream      string                `json:"vless_upstream"`
 	VlessEnabled       bool                  `json:"vless_enabled"`
+
 	BlacklistCIDR      []string              `json:"blacklist_cidr"`
 	BlacklistCountries []string              `json:"blacklist_countries"`
 	Nodes              map[string]*NodeStatus `json:"nodes"`
@@ -63,10 +72,15 @@ var (
 	state     = GlobalState{
 		AdminUser:          "admin",
 		AdminPassword:      "admin",
+		WebProxyEnabled:    true,
 		Port:               443,
 		Domain:             "tg-web.myproxynode.org",
 		WSPath:             "/api/v1/tg-gateway",
 		FallbackURL:        "https://ya.ru",
+		MTProtoEnabled:     true,
+		MTProtoPort:        8443,
+		MTProtoSecret:      "ee16c80102030405060708090a0b0c0d0e79616e6465782e7275",
+		MTProtoSNI:         "yandex.ru",
 		VlessUpstream:      "",
 		VlessEnabled:       false,
 		BlacklistCIDR:      []string{"185.220.101.0/24"},
@@ -106,7 +120,6 @@ func authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
-
 		sessMu.RLock()
 		expire, exists := sessions[cookie.Value]
 		sessMu.RUnlock()
@@ -122,28 +135,75 @@ func authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 func main() {
 	loadState()
 
-	// Фоновый воркер: проверка статуса здоровья нод (offline если нет сигнала > 30 сек)
+	// Фоновый чекер активности нод
 	go func() {
 		for {
-			time.Sleep(10 * time.Second)
+			time.Sleep(5 * time.Second)
 			state.mu.Lock()
 			now := time.Now()
 			for _, n := range state.Nodes {
-				n.IsOnline = now.Sub(n.LastSeen) < 30*time.Second
-				if !n.IsOnline {
-					n.ActiveConns = nil
-				}
+				n.IsOnline = now.Sub(n.LastSeen) < 15*time.Second
 			}
 			state.mu.Unlock()
 		}
 	}()
 
-	// 1. АВТОРИЗАЦИЯ
-	http.HandleFunc("/api/auth/login", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
+	// Раздача бинарника агента
+	http.HandleFunc("/agent-bin", func(w http.ResponseWriter, r *http.Request) {
+		agentPath := "/root/telegate-agent"
+		if _, err := os.Stat(agentPath); os.IsNotExist(err) {
+			agentPath = "./telegate-agent"
 		}
+		http.ServeFile(w, r, agentPath)
+	})
+
+	// Bootstrap скрипт для подключения ноды
+	http.HandleFunc("/bootstrap", func(w http.ResponseWriter, r *http.Request) {
+		token := r.URL.Query().Get("token")
+		nodeID := r.URL.Query().Get("id")
+		host := r.Host
+
+		script := fmt.Sprintf(`#!/usr/bin/env bash
+set -e
+echo "=== [TeleGate] Подключение ноды %s к панели ==="
+
+if ! command -v sing-box &> /dev/null; then
+    echo "-> Установка ядра Sing-box..."
+    bash -c "$(curl -fsSL https://sing-box.app/install.sh)" || true
+fi
+
+echo "-> Скачивание бинарника агента TeleGate..."
+curl -fsSL "http://%s/agent-bin" -o /usr/local/bin/telegate-agent
+chmod +x /usr/local/bin/telegate-agent
+
+mkdir -p /etc/telegate
+cat << SERVICE > /etc/systemd/system/telegate-agent.service
+[Unit]
+Description=TeleGate Node Agent
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/telegate-agent -master "http://%s" -token "%s" -id "%s" -port %d
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+SERVICE
+
+systemctl daemon-reload
+systemctl enable --now telegate-agent
+systemctl restart telegate-agent
+echo "=== Нода успешно запущена и подключена к панели! ==="
+`, nodeID, host, host, token, nodeID, state.Port)
+
+		w.Header().Set("Content-Type", "text/plain")
+		w.Write([]byte(script))
+	})
+
+	// Auth API
+	http.HandleFunc("/api/auth/login", func(w http.ResponseWriter, r *http.Request) {
 		var creds struct {
 			Username string `json:"username"`
 			Password string `json:"password"`
@@ -152,7 +212,6 @@ func main() {
 			http.Error(w, "Bad request", http.StatusBadRequest)
 			return
 		}
-
 		state.mu.RLock()
 		valid := creds.Username == state.AdminUser && creds.Password == state.AdminPassword
 		state.mu.RUnlock()
@@ -174,7 +233,6 @@ func main() {
 			HttpOnly: true,
 			Expires:  time.Now().Add(24 * time.Hour),
 		})
-
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`{"status":"ok"}`))
 	})
@@ -214,19 +272,14 @@ func main() {
 	})
 
 	http.HandleFunc("/api/auth/password", authMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
 		var req struct {
 			OldPassword string `json:"old_password"`
 			NewPassword string `json:"new_password"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || len(req.NewPassword) < 4 {
-			http.Error(w, "Пароль должен быть не менее 4 символов", http.StatusBadRequest)
+			http.Error(w, "Пароль должен быть от 4 символов", http.StatusBadRequest)
 			return
 		}
-
 		state.mu.Lock()
 		if req.OldPassword != state.AdminPassword {
 			state.mu.Unlock()
@@ -236,12 +289,11 @@ func main() {
 		state.AdminPassword = req.NewPassword
 		state.mu.Unlock()
 		saveState()
-
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`{"status":"success"}`))
 	}))
 
-	// 2. ДАШБОРД И КОНФИГУРАЦИЯ
+	// State & Config
 	http.HandleFunc("/api/state", authMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		state.mu.RLock()
 		defer state.mu.RUnlock()
@@ -250,17 +302,20 @@ func main() {
 	}))
 
 	http.HandleFunc("/api/config/save", authMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
 		var payload struct {
-			Port          int    `json:"port"`
-			Domain        string `json:"domain"`
-			WSPath        string `json:"ws_path"`
-			FallbackURL   string `json:"fallback_url"`
-			VlessUpstream string `json:"vless_upstream"`
-			VlessEnabled  bool   `json:"vless_enabled"`
+			WebProxyEnabled bool   `json:"web_proxy_enabled"`
+			Port            int    `json:"port"`
+			Domain          string `json:"domain"`
+			WSPath          string `json:"ws_path"`
+			FallbackURL     string `json:"fallback_url"`
+
+			MTProtoEnabled  bool   `json:"mtproto_enabled"`
+			MTProtoPort     int    `json:"mtproto_port"`
+			MTProtoSecret   string `json:"mtproto_secret"`
+			MTProtoSNI      string `json:"mtproto_sni"`
+
+			VlessUpstream   string `json:"vless_upstream"`
+			VlessEnabled    bool   `json:"vless_enabled"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -268,10 +323,17 @@ func main() {
 		}
 
 		state.mu.Lock()
+		state.WebProxyEnabled = payload.WebProxyEnabled
 		state.Port = payload.Port
 		state.Domain = payload.Domain
 		state.WSPath = payload.WSPath
 		state.FallbackURL = payload.FallbackURL
+
+		state.MTProtoEnabled = payload.MTProtoEnabled
+		state.MTProtoPort = payload.MTProtoPort
+		state.MTProtoSecret = payload.MTProtoSecret
+		state.MTProtoSNI = payload.MTProtoSNI
+
 		state.VlessUpstream = payload.VlessUpstream
 		state.VlessEnabled = payload.VlessEnabled
 		state.mu.Unlock()
@@ -281,12 +343,8 @@ func main() {
 		w.Write([]byte(`{"status":"success"}`))
 	}))
 
-	// 3. УПРАВЛЕНИЕ НОДАМИ
+	// Ноды
 	http.HandleFunc("/api/nodes/create", authMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
 		var body struct {
 			Name string `json:"name"`
 			IP   string `json:"ip"`
@@ -328,7 +386,7 @@ func main() {
 		w.WriteHeader(http.StatusOK)
 	}))
 
-	// 4. ЧЕРНЫЙ СПИСОК (IP + СТРАНЫ)
+	// Черные списки
 	http.HandleFunc("/api/blacklist/ip", authMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
 			var body struct {
@@ -345,7 +403,6 @@ func main() {
 			w.WriteHeader(http.StatusOK)
 			return
 		}
-
 		if r.Method == http.MethodDelete {
 			ip := r.URL.Query().Get("ip")
 			state.mu.Lock()
@@ -373,13 +430,12 @@ func main() {
 				return
 			}
 			state.mu.Lock()
-			state.BlacklistCountries = append(state.BlacklistCountries, strings.ToUpper(body.Country))
+			state.BlacklistCountries = append(state.BlacklistCountries, strings.ToUpper(strings.TrimSpace(body.Country)))
 			state.mu.Unlock()
 			saveState()
 			w.WriteHeader(http.StatusOK)
 			return
 		}
-
 		if r.Method == http.MethodDelete {
 			c := strings.ToUpper(r.URL.Query().Get("country"))
 			state.mu.Lock()
@@ -397,44 +453,7 @@ func main() {
 		}
 	}))
 
-	// 5. AGENT API & BOOTSTRAP
-	http.HandleFunc("/bootstrap", func(w http.ResponseWriter, r *http.Request) {
-		token := r.URL.Query().Get("token")
-		nodeID := r.URL.Query().Get("id")
-		host := r.Host
-
-		script := fmt.Sprintf(`#!/usr/bin/env bash
-set -e
-echo "=== [TeleGate] Автоматическое подключение ноды %s ==="
-if ! command -v sing-box &> /dev/null; then
-    bash -c "$(curl -fsSL https://sing-box.app/install.sh)"
-fi
-curl -fsSL "http://%s/agent-bin" -o /usr/local/bin/telegate-agent || true
-chmod +x /usr/local/bin/telegate-agent || true
-mkdir -p /etc/telegate
-cat << SERVICE > /etc/systemd/system/telegate-agent.service
-[Unit]
-Description=TeleGate Node Agent
-After=network.target
-
-[Service]
-Type=simple
-ExecStart=/usr/local/bin/telegate-agent -master "http://%s" -token "%s" -id "%s"
-Restart=always
-
-[Install]
-WantedBy=multi-user.target
-SERVICE
-systemctl daemon-reload
-systemctl enable --now telegate-agent || true
-echo "=== Нода успешно подключена к панели! ==="
-`, nodeID, host, host, token, nodeID)
-
-		w.Header().Set("Content-Type", "text/plain")
-		w.Write([]byte(script))
-	})
-
-	// Heartbeat от агента с реальным списком подключений
+	// Heartbeat от ноды
 	http.HandleFunc("/api/agent/heartbeat", func(w http.ResponseWriter, r *http.Request) {
 		var payload struct {
 			NodeID            string          `json:"node_id"`
@@ -451,10 +470,11 @@ echo "=== Нода успешно подключена к панели! ==="
 			node.LastSeen = time.Now()
 			node.IsOnline = true
 			node.UptimeSec = payload.UptimeSeconds
-			node.ActiveConns = payload.ActiveConnections
+			if len(payload.ActiveConnections) > 0 {
+				node.ActiveConns = payload.ActiveConnections
+			}
 		}
 		state.mu.Unlock()
-
 		w.WriteHeader(http.StatusOK)
 	})
 
@@ -477,12 +497,11 @@ echo "=== Нода успешно подключена к панели! ==="
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(cfgJSON)
 	})
 
-	// 6. UI
+	// UI
 	subFS, err := fs.Sub(uiFS, "ui")
 	if err == nil {
 		http.Handle("/", http.FileServer(http.FS(subFS)))

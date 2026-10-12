@@ -146,8 +146,11 @@
               </div>
             </div>
             <div class="p-5 rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 shadow-sm">
-              <span class="text-xs font-medium text-zinc-500">Входящий протокол</span>
-              <div class="mt-2"><span class="text-lg font-semibold tracking-tight text-indigo-500">Telegram Web Proxy</span></div>
+              <span class="text-xs font-medium text-zinc-500">Активные протоколы</span>
+              <div class="mt-2 flex items-center gap-1.5 flex-wrap">
+                <span id="badge-stat-web" class="text-xs px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-500 font-semibold">Web Proxy</span>
+                <span id="badge-stat-mtproto" class="text-xs px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500 font-semibold">MTProto</span>
+              </div>
             </div>
             <div class="p-5 rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 shadow-sm">
               <span class="text-xs font-medium text-zinc-500">Исходящий апстрим</span>
@@ -172,8 +175,16 @@
         <section id="tab-proxies" class="hidden space-y-6">
           <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div class="lg:col-span-2 space-y-6">
+
+              <!-- 1. Telegram Web Proxy -->
               <div class="p-6 rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 shadow-sm space-y-4">
-                <h3 class="font-semibold text-sm">Параметры Telegram Web Proxy</h3>
+                <div class="flex items-center justify-between pb-2 border-b border-zinc-200 dark:border-zinc-800">
+                  <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
+                    <h3 class="font-semibold text-sm">1. Telegram Web Proxy (HTTPS / WebSocket)</h3>
+                  </div>
+                  <input id="cfg-web-enabled" type="checkbox" class="w-4 h-4 accent-indigo-600">
+                </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label class="block text-xs font-medium text-zinc-500 mb-1">Домен / SNI</label>
@@ -194,32 +205,67 @@
                 </div>
               </div>
 
+              <!-- 2. MTProto Fake-TLS -->
+              <div class="p-6 rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 shadow-sm space-y-4">
+                <div class="flex items-center justify-between pb-2 border-b border-zinc-200 dark:border-zinc-800">
+                  <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                    <h3 class="font-semibold text-sm">2. Telegram MTProto (Fake-TLS)</h3>
+                  </div>
+                  <input id="cfg-mtproto-enabled" type="checkbox" class="w-4 h-4 accent-emerald-600">
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-xs font-medium text-zinc-500 mb-1">Порт MTProto</label>
+                    <input id="cfg-mtproto-port" type="number" class="w-full text-xs px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-transparent outline-none font-mono">
+                  </div>
+                  <div>
+                    <label class="block text-xs font-medium text-zinc-500 mb-1">SNI Маскировки Fake-TLS</label>
+                    <input id="cfg-mtproto-sni" type="text" class="w-full text-xs px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-transparent outline-none">
+                  </div>
+                  <div class="md:col-span-2">
+                    <label class="block text-xs font-medium text-zinc-500 mb-1">Secret (ee... с доменом)</label>
+                    <input id="cfg-mtproto-secret" type="text" class="w-full text-xs px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-transparent outline-none font-mono">
+                  </div>
+                </div>
+              </div>
+
+              <!-- 3. Upstream VLESS Relay -->
               <div class="p-6 rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 shadow-sm space-y-4">
                 <div class="flex items-center justify-between">
                   <div>
-                    <h3 class="font-semibold text-sm">Проброс через VLESS (Upstream)</h3>
-                    <p class="text-xs text-zinc-500">Трафик будет выходить наружу через сторонний VLESS-сервер</p>
+                    <h3 class="font-semibold text-sm">Проброс трафика через VLESS (Upstream)</h3>
+                    <p class="text-xs text-zinc-500">Выход наружу без раскрытия IP ноды</p>
                   </div>
                   <input id="cfg-vless-enabled" type="checkbox" class="w-4 h-4 accent-indigo-600">
                 </div>
-                <textarea id="cfg-vless-link" rows="3" class="w-full text-xs font-mono px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-transparent outline-none leading-relaxed"></textarea>
+                <textarea id="cfg-vless-link" rows="2" class="w-full text-xs font-mono px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-transparent outline-none leading-relaxed"></textarea>
                 <div class="flex justify-end">
                   <button onclick="saveProxyConfig()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-medium transition shadow-sm">
-                    Применить изменения на лету (Zero Downtime)
+                    Применить изменения (Zero Downtime)
                   </button>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Client Links -->
+            <div class="space-y-4">
+              <div class="p-6 rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 shadow-sm space-y-4">
+                <h3 class="font-semibold text-sm">Клиентские ссылки Telegram</h3>
+                <div class="space-y-3">
+                  <div class="p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/40">
+                    <span class="text-xs font-semibold block mb-1">1. Web Proxy Ссылка</span>
+                    <input id="client-link-web" readonly class="w-full text-[11px] font-mono bg-transparent border-none outline-none text-zinc-400 select-all">
+                  </div>
+                  <div class="p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/40">
+                    <span class="text-xs font-semibold block mb-1">2. MTProto Ссылка</span>
+                    <input id="client-link-mtproto" readonly class="w-full text-[11px] font-mono bg-transparent border-none outline-none text-zinc-400 select-all">
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div class="space-y-4">
-              <div class="p-6 rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 shadow-sm space-y-3">
-                <h3 class="font-semibold text-sm">Клиентская ссылка Telegram</h3>
-                <div class="p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/40">
-                  <span class="text-xs font-semibold block mb-1">Web Proxy Link</span>
-                  <input id="client-link" readonly class="w-full text-[11px] font-mono bg-transparent border-none outline-none text-zinc-400 select-all">
-                </div>
-              </div>
-            </div>
           </div>
         </section>
 
@@ -254,12 +300,25 @@
               <div id="blacklist-items" class="space-y-2 max-h-60 overflow-y-auto custom-scrollbar"></div>
             </div>
 
-            <!-- Country Blocklist -->
+            <!-- Country Blocklist with Flag Picker -->
             <div class="p-6 rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 shadow-sm space-y-4">
               <h3 class="font-semibold text-sm">Блокировка стран (GeoIP)</h3>
               <div class="flex gap-2">
-                <input id="input-ban-country" type="text" placeholder="Код страны (например: CN, IR, US)" class="flex-1 text-xs px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-transparent font-mono outline-none uppercase">
-                <button onclick="addBanCountry()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-medium transition">Добавить</button>
+                <select id="country-select" class="flex-1 text-xs px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 outline-none">
+                  <option value="">Выберите страну из списка...</option>
+                  <option value="CN">🇨🇳 Китай (CN)</option>
+                  <option value="IR">🇮🇷 Иран (IR)</option>
+                  <option value="RU">🇷🇺 Россия (RU)</option>
+                  <option value="US">🇺🇸 США (US)</option>
+                  <option value="UA">🇺🇦 Украина (UA)</option>
+                  <option value="TR">🇹🇷 Турция (TR)</option>
+                  <option value="IN">🇮🇳 Индия (IN)</option>
+                  <option value="BR">🇧🇷 Бразилия (BR)</option>
+                  <option value="DE">🇩🇪 Германия (DE)</option>
+                  <option value="NL">🇳🇱 Нидерланды (NL)</option>
+                  <option value="KP">🇰🇵 Северная Корея (KP)</option>
+                </select>
+                <button onclick="addSelectedCountry()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-medium transition">Заблокировать</button>
               </div>
               <div id="blacklist-countries" class="flex flex-wrap gap-2"></div>
             </div>
@@ -270,6 +329,30 @@
     </main>
   </div>
 
+  <!-- ================= MODAL: BAN IP PROMPT ================= -->
+  <div id="ban-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm hidden">
+    <div class="w-full max-w-sm p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-2xl space-y-4">
+      <h3 class="font-semibold text-sm">Блокировка IP-адреса</h3>
+      <p class="text-xs text-zinc-400">Выберите область блокировки для клиента <span id="ban-target-ip" class="font-mono text-zinc-200 font-bold"></span>:</p>
+      
+      <div class="space-y-2 pt-2">
+        <button id="btn-ban-single" class="w-full text-left px-3.5 py-2.5 rounded-lg border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800/80 text-xs transition">
+          <div class="font-semibold text-rose-500">Только этот IP (/32)</div>
+          <div id="ban-single-text" class="text-[11px] text-zinc-400 font-mono"></div>
+        </button>
+
+        <button id="btn-ban-subnet" class="w-full text-left px-3.5 py-2.5 rounded-lg border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800/80 text-xs transition">
+          <div class="font-semibold text-rose-500">Вся подсеть провайдера (/24)</div>
+          <div id="ban-subnet-text" class="text-[11px] text-zinc-400 font-mono"></div>
+        </button>
+      </div>
+
+      <div class="flex justify-end pt-2 border-t border-zinc-200 dark:border-zinc-800">
+        <button onclick="closeBanModal()" class="px-3.5 py-1.5 text-xs rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition">Отмена</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ================= MODAL: ADD NODE ================= -->
   <div id="add-node-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm hidden">
     <div class="w-full max-w-lg p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-2xl space-y-5">
@@ -277,7 +360,6 @@
         <h3 class="font-semibold text-sm">Добавить ноду в кластер</h3>
         <button onclick="closeAddNodeModal()" class="text-zinc-400 hover:text-zinc-200 text-lg">✕</button>
       </div>
-
       <div class="space-y-3">
         <div>
           <label class="block text-xs font-medium text-zinc-500 mb-1">Имя ноды</label>
@@ -288,12 +370,10 @@
           <input id="new-node-ip" type="text" placeholder="194.87.10.25" class="w-full text-xs px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-transparent outline-none font-mono">
         </div>
       </div>
-
       <div id="node-command-box" class="hidden space-y-2">
         <label class="block text-xs font-medium text-emerald-500">Запустите эту команду на целевом сервере:</label>
         <div class="p-3 rounded-lg bg-zinc-950 font-mono text-[11px] text-zinc-300 break-all select-all border border-zinc-800" id="generated-command"></div>
       </div>
-
       <div class="flex justify-end gap-2 pt-2 border-t border-zinc-200 dark:border-zinc-800">
         <button onclick="closeAddNodeModal()" class="px-4 py-2 text-xs font-medium rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition">Закрыть</button>
         <button id="btn-create-node" onclick="createNode()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-lg transition shadow-sm">Сгенерировать ключ</button>
@@ -301,7 +381,7 @@
     </div>
   </div>
 
-  <!-- ================= MODAL: CHANGE PASSWORD ================= -->
+  <!-- ================= MODAL: PASSWORD ================= -->
   <div id="password-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm hidden">
     <div class="w-full max-w-sm p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-2xl space-y-4">
       <h3 class="font-semibold text-sm">Смена пароля администратора</h3>
@@ -325,6 +405,13 @@
   <script>
     let globalState = null;
 
+    const countryFlags = {
+      'CN': '🇨🇳 Китай', 'IR': '🇮🇷 Иран', 'RU': '🇷🇺 Россия',
+      'US': '🇺🇸 США', 'UA': '🇺🇦 Украина', 'TR': '🇹🇷 Турция',
+      'IN': '🇮🇳 Индия', 'BR': '🇧🇷 Бразилия', 'DE': '🇩🇪 Германия',
+      'NL': '🇳🇱 Нидерланды', 'KP': '🇰🇵 КНДР'
+    };
+
     async function checkAuth() {
       try {
         const res = await fetch('/api/auth/me');
@@ -346,7 +433,6 @@
       e.preventDefault();
       const errBox = document.getElementById('auth-error');
       errBox.classList.add('hidden');
-
       const username = document.getElementById('login-username').value;
       const password = document.getElementById('login-password').value;
 
@@ -356,7 +442,6 @@
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({username, password})
         });
-
         if (res.ok) {
           checkAuth();
         } else {
@@ -378,10 +463,7 @@
     async function loadState() {
       try {
         const res = await fetch('/api/state');
-        if (!res.ok) {
-          checkAuth();
-          return;
-        }
+        if (!res.ok) return checkAuth();
         globalState = await res.json();
         render();
       } catch (e) {
@@ -437,7 +519,7 @@
               <td class="py-3 px-4 font-sans text-indigo-400">${c.protocol}</td>
               <td class="py-3 px-4 font-sans text-emerald-400">${globalState.vless_enabled ? '→ VLESS Upstream' : '→ Direct'}</td>
               <td class="py-3 px-4 text-right">
-                <button onclick="banFromTable('${c.ip}')" class="px-2.5 py-1 text-[11px] rounded bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white transition font-sans">В бан</button>
+                <button onclick="openBanModal('${c.ip}')" class="px-2.5 py-1 text-[11px] rounded bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white transition font-sans">В бан</button>
               </td>
             </tr>
           `;
@@ -449,15 +531,31 @@
       document.getElementById('stat-upstream').innerText = globalState.vless_enabled ? 'VLESS Reality' : 'Direct';
       document.getElementById('stat-blacklist-count').innerText = (globalState.blacklist_cidr || []).length + (globalState.blacklist_countries || []).length;
 
+      document.getElementById('badge-stat-web').style.display = globalState.web_proxy_enabled ? 'inline-block' : 'none';
+      document.getElementById('badge-stat-mtproto').style.display = globalState.mtproto_enabled ? 'inline-block' : 'none';
+
+      // 1. Web Proxy Form
+      document.getElementById('cfg-web-enabled').checked = !!globalState.web_proxy_enabled;
       document.getElementById('cfg-domain').value = globalState.domain || '';
       document.getElementById('cfg-port').value = globalState.port || 443;
       document.getElementById('cfg-wspath').value = globalState.ws_path || '';
       document.getElementById('cfg-fallback').value = globalState.fallback_url || '';
+
+      // 2. MTProto Form
+      document.getElementById('cfg-mtproto-enabled').checked = !!globalState.mtproto_enabled;
+      document.getElementById('cfg-mtproto-port').value = globalState.mtproto_port || 8443;
+      document.getElementById('cfg-mtproto-sni').value = globalState.mtproto_sni || '';
+      document.getElementById('cfg-mtproto-secret').value = globalState.mtproto_secret || '';
+
+      // 3. VLESS
       document.getElementById('cfg-vless-link').value = globalState.vless_upstream || '';
       document.getElementById('cfg-vless-enabled').checked = !!globalState.vless_enabled;
-      document.getElementById('client-link').value = 'https://t.me/proxy?server=' + globalState.domain + '&port=' + globalState.port;
 
-      // Render IP Blacklist
+      // Links
+      document.getElementById('client-link-web').value = `https://t.me/proxy?server=${globalState.domain}&port=${globalState.port}`;
+      document.getElementById('client-link-mtproto').value = `tg://proxy?server=${globalState.domain}&port=${globalState.mtproto_port}&secret=${globalState.mtproto_secret}`;
+
+      // IP Blacklist
       const blContainer = document.getElementById('blacklist-items');
       blContainer.innerHTML = '';
       (globalState.blacklist_cidr || []).forEach(ip => {
@@ -469,13 +567,14 @@
         `;
       });
 
-      // Render Country Blacklist
+      // Country Blacklist
       const cContainer = document.getElementById('blacklist-countries');
       cContainer.innerHTML = '';
       (globalState.blacklist_countries || []).forEach(c => {
+        const title = countryFlags[c] || c;
         cContainer.innerHTML += `
           <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700">
-            <span>${c}</span>
+            <span>${title}</span>
             <button onclick="removeCountryBan('${c}')" class="text-zinc-400 hover:text-rose-500">✕</button>
           </span>
         `;
@@ -484,10 +583,17 @@
 
     async function saveProxyConfig() {
       const payload = {
+        web_proxy_enabled: document.getElementById('cfg-web-enabled').checked,
         port: parseInt(document.getElementById('cfg-port').value),
         domain: document.getElementById('cfg-domain').value,
         ws_path: document.getElementById('cfg-wspath').value,
         fallback_url: document.getElementById('cfg-fallback').value,
+
+        mtproto_enabled: document.getElementById('cfg-mtproto-enabled').checked,
+        mtproto_port: parseInt(document.getElementById('cfg-mtproto-port').value),
+        mtproto_secret: document.getElementById('cfg-mtproto-secret').value,
+        mtproto_sni: document.getElementById('cfg-mtproto-sni').value,
+
         vless_upstream: document.getElementById('cfg-vless-link').value,
         vless_enabled: document.getElementById('cfg-vless-enabled').checked
       };
@@ -498,32 +604,52 @@
         body: JSON.stringify(payload)
       });
       if (res.ok) {
-        alert('Конфигурация успешно сохранена!');
+        alert('Конфигурация прокси успешно сохранена!');
         loadState();
       }
     }
 
-    async function banFromTable(ip) {
-      if (confirm('Заблокировать IP ' + ip + '?')) {
-        await fetch('/api/blacklist/ip', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({ip})
-        });
-        loadState();
+    function openBanModal(ip) {
+      document.getElementById('ban-target-ip').innerText = ip;
+      document.getElementById('ban-single-text').innerText = `${ip}/32`;
+      
+      const parts = ip.split('.');
+      let subnet = ip;
+      if (parts.length === 4) {
+        subnet = `${parts[0]}.${parts[1]}.${parts[2]}.0/24`;
       }
+      document.getElementById('ban-subnet-text').innerText = subnet;
+
+      document.getElementById('btn-ban-single').onclick = async () => {
+        await executeBan(ip);
+        closeBanModal();
+      };
+      document.getElementById('btn-ban-subnet').onclick = async () => {
+        await executeBan(subnet);
+        closeBanModal();
+      };
+
+      document.getElementById('ban-modal').classList.remove('hidden');
+    }
+
+    function closeBanModal() {
+      document.getElementById('ban-modal').classList.add('hidden');
+    }
+
+    async function executeBan(target) {
+      await fetch('/api/blacklist/ip', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ip: target})
+      });
+      loadState();
     }
 
     async function addBanIP() {
       const ip = document.getElementById('input-ban-ip').value.trim();
       if (!ip) return;
-      await fetch('/api/blacklist/ip', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ip})
-      });
+      await executeBan(ip);
       document.getElementById('input-ban-ip').value = '';
-      loadState();
     }
 
     async function removeBan(ip) {
@@ -531,15 +657,16 @@
       loadState();
     }
 
-    async function addBanCountry() {
-      const c = document.getElementById('input-ban-country').value.trim().toUpperCase();
+    async function addSelectedCountry() {
+      const select = document.getElementById('country-select');
+      const c = select.value;
       if (!c) return;
       await fetch('/api/blacklist/country', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({country: c})
       });
-      document.getElementById('input-ban-country').value = '';
+      select.value = '';
       loadState();
     }
 
@@ -572,7 +699,6 @@
         body: JSON.stringify({name, ip})
       });
       const data = await res.json();
-      
       const host = window.location.host;
       const cmd = `curl -fsSL "http://${host}/bootstrap?token=${data.token}&id=${data.id}" | bash`;
       document.getElementById('generated-command').innerText = cmd;
@@ -615,9 +741,7 @@
       document.getElementById('nav-' + t).className = 'nav-item w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50/70 dark:bg-indigo-950/40 transition';
     }
 
-    function toggleTheme() {
-      document.documentElement.classList.toggle('dark');
-    }
+    function toggleTheme() { document.documentElement.classList.toggle('dark'); }
 
     setInterval(loadState, 5000);
     checkAuth();
