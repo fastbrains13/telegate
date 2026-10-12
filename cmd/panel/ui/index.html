@@ -78,7 +78,7 @@
             <span>Дашборд & Ноды</span>
           </button>
 
-          <button onclick="switchTab('proxies')" id="nav-proxies" class="nav-item w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60 transition">
+          <button onclick="window.location.href='/proxies.html'" id="nav-proxies" class="nav-item w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60 transition">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
             <span>Конфигуратор прокси</span>
           </button>
@@ -556,7 +556,7 @@
               </div>
             </div>
             <div class="flex items-center gap-2">
-              <button onclick="openNodeConfig('${node.id}')" class="px-3 py-1.5 text-xs bg-zinc-800 hover:bg-zinc-700 rounded-lg">Настройки прокси</button>
+              <button onclick="window.location.href='/proxies.html#${node.id}'" class="px-3 py-1.5 text-xs bg-zinc-800 hover:bg-zinc-700 rounded-lg">Настройки прокси</button>
               <button onclick="deleteNode('${node.id}')" class="px-3 py-1.5 text-xs text-rose-400 border border-rose-500/20 rounded-lg hover:bg-rose-500 hover:text-white transition">Удалить</button>
             </div>
           </div>

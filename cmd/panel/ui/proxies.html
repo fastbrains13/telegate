@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="ru" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TeleGate — Конфигуратор прокси</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: { brand: { 50: '#eef2ff', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca' } }
+        }
+      }
+    }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(156, 163, 175, 0.4); border-radius: 9999px; }
+  </style>
+</head>
+<body class="bg-zinc-950 text-zinc-100 min-h-screen flex antialiased">
+
+  <!-- Sidebar -->
+  <aside class="w-64 border-r border-zinc-800 bg-zinc-900/60 flex flex-col justify-between shrink-0 min-h-screen">
+    <div>
+      <div class="h-16 flex items-center justify-between px-6 border-b border-zinc-800">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold shadow-md shadow-indigo-500/20">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          </div>
+          <div>
+            <span class="font-bold tracking-tight text-base block leading-none">TeleGate</span>
+            <span class="text-[11px] text-zinc-400 font-medium tracking-wide">PROXY CONTROL</span>
+          </div>
+        </div>
+      </div>
+
+      <nav class="p-3 space-y-1">
+        <a href="/index.html" class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60 transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+          <span>Дашборд & Ноды</span>
+        </a>
+
+        <a href="/proxies.html" class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium text-indigo-400 bg-indigo-950/40 transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+          <span>Конфигуратор прокси</span>
+        </a>
+
+        <a href="/index.html#connections" class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60 transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+          <span>Подключения & IP</span>
+        </a>
+
+        <a href="/index.html#security" class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60 transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+          <span>Черный список & GeoIP</span>
+        </a>
+      </nav>
+    </div>
+
+    <div class="p-4 border-t border-zinc-800">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center font-bold text-xs">AD</div>
+          <div class="text-xs">
+            <div class="font-semibold text-zinc-100">admin</div>
+            <div class="text-zinc-400">Master: Live</div>
+          </div>
+        </div>
+        <button onclick="handleLogout()" class="p-1.5 rounded-md text-zinc-400 hover:text-rose-500 transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content Area -->
+  <main class="flex-1 flex flex-col min-w-0 overflow-y-auto custom-scrollbar">
+    <header class="h-16 border-b border-zinc-800 bg-zinc-900/40 backdrop-blur px-8 flex items-center justify-between sticky top-0 z-20">
+      <h1 class="text-lg font-semibold tracking-tight">Конфигуратор прокси Telegram</h1>
+      <button id="btn-save-proxy" type="button" onclick="saveProxy()" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold shadow-md transition">
+        💾 Сохранить и применить на ноде
+      </button>
+    </header>
+
+    <div class="p-8 max-w-7xl w-full mx-auto space-y-6">
+
+      <!-- Node Selector Bar -->
+      <div class="p-5 rounded-xl border border-zinc-800 bg-zinc-900/60 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <label class="text-xs font-medium text-zinc-400">Настраиваемый узел:</label>
+          <select id="node-select" onchange="onSelectNode()" class="text-xs px-3.5 py-2 rounded-lg border border-zinc-700 bg-zinc-900 text-zinc-100 outline-none font-semibold"></select>
+        </div>
+        <div class="text-xs text-zinc-400">
+          IP ноды: <span id="node-ip-label" class="font-mono text-zinc-200 font-semibold">--</span>
+        </div>
+      </div>
+
+      <!-- Dual Cards Form -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        <!-- 1. TELEGRAM WEB PROXY -->
+        <div class="p-6 rounded-xl border border-zinc-800 bg-zinc-900/60 shadow-sm space-y-5">
+          <div class="flex items-center justify-between pb-3 border-b border-zinc-800">
+            <div class="flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full bg-indigo-500"></span>
+              <h3 class="font-bold text-sm">1. Telegram Web Proxy (WSS)</h3>
+            </div>
+            <label class="inline-flex items-center gap-2 text-xs font-medium text-zinc-400 cursor-pointer">
+              <span>Включен</span>
+              <input id="web-enabled" type="checkbox" onchange="updateLinks()" class="w-4 h-4 accent-indigo-600">
+            </label>
+          </div>
+
+          <div class="space-y-2">
+            <label class="block text-xs font-medium text-zinc-400">Адрес подключения (Host):</label>
+            <div class="grid grid-cols-2 gap-2">
+              <label class="flex items-center gap-2 p-2.5 rounded-lg border border-zinc-800 bg-zinc-950/60 text-xs cursor-pointer">
+                <input type="radio" name="web-host-mode" value="ip" onchange="toggleWebHostMode()" checked class="accent-indigo-600">
+                <span>IP узла (<span id="web-ip-preview" class="font-mono text-zinc-300">--</span>)</span>
+              </label>
+              <label class="flex items-center gap-2 p-2.5 rounded-lg border border-zinc-800 bg-zinc-950/60 text-xs cursor-pointer">
+                <input type="radio" name="web-host-mode" value="domain" onchange="toggleWebHostMode()" class="accent-indigo-600">
+                <span>Свой домен</span>
+              </label>
+            </div>
+            <input id="web-custom-domain" type="text" oninput="updateLinks()" placeholder="например, ge2.sa.fbinfo.ru" class="hidden w-full text-xs px-3 py-2 rounded-lg border border-zinc-700 bg-transparent outline-none font-mono">
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-medium text-zinc-400 mb-1">Порт прослушивания *</label>
+              <input id="web-port" type="number" oninput="updateLinks()" value="443" class="w-full text-xs px-3 py-2 rounded-lg border border-zinc-700 bg-transparent outline-none font-mono">
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-zinc-400 mb-1">WebSocket Path</label>
+              <input id="web-wspath" type="text" value="/" placeholder="/" class="w-full text-xs px-3 py-2 rounded-lg border border-zinc-700 bg-transparent outline-none font-mono">
+            </div>
+          </div>
+
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label class="text-xs font-medium text-zinc-400">Секрет (32 hex-символа) *</label>
+              <button type="button" onclick="genWebSecret()" class="text-[11px] text-indigo-400 hover:text-indigo-300">🎲 Сгенерировать</button>
+            </div>
+            <input id="web-secret" type="text" oninput="updateLinks()" class="w-full text-xs px-3 py-2 rounded-lg border border-zinc-700 bg-transparent outline-none font-mono">
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-zinc-400 mb-1">Fallback Web-Site (Self-steal)</label>
+            <input id="web-fallback" type="text" value="https://ya.ru" class="w-full text-xs px-3 py-2 rounded-lg border border-zinc-700 bg-transparent outline-none">
+          </div>
+
+          <div class="p-3 rounded-lg border border-zinc-800 bg-zinc-950/40 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold">Исходящий трафик (Upstream)</span>
+              <select id="web-upstream" onchange="toggleWebUpstream()" class="text-xs px-2 py-1 rounded bg-zinc-800 border border-zinc-700">
+                <option value="direct">Direct (Напрямую)</option>
+                <option value="vless">VLESS + Reality</option>
+              </select>
+            </div>
+            <input id="web-vless" type="text" placeholder="vless://...@...:443?..." class="hidden w-full text-xs px-3 py-2 rounded-lg border border-zinc-700 bg-transparent outline-none font-mono">
+          </div>
+
+          <div class="pt-2 border-t border-zinc-800 space-y-2">
+            <span class="text-xs font-semibold block text-indigo-400">Клиентская ссылка Telegram:</span>
+            <div class="flex items-center gap-2">
+              <input id="web-link" readonly class="flex-1 text-[11px] font-mono p-2.5 rounded-lg border border-zinc-800 bg-zinc-950 text-zinc-300 select-all outline-none">
+              <button type="button" onclick="copyLink('web-link')" class="px-3 py-2.5 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-xs font-medium">Копировать</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. TELEGRAM MTPROTO -->
+        <div class="p-6 rounded-xl border border-zinc-800 bg-zinc-900/60 shadow-sm space-y-5">
+          <div class="flex items-center justify-between pb-3 border-b border-zinc-800">
+            <div class="flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
+              <h3 class="font-bold text-sm">2. Telegram MTProto (Fake-TLS)</h3>
+            </div>
+            <label class="inline-flex items-center gap-2 text-xs font-medium text-zinc-400 cursor-pointer">
+              <span>Включен</span>
+              <input id="mtproto-enabled" type="checkbox" onchange="updateLinks()" class="w-4 h-4 accent-emerald-600">
+            </label>
+          </div>
+
+          <div class="space-y-2">
+            <label class="block text-xs font-medium text-zinc-400">Адрес подключения (Host):</label>
+            <div class="grid grid-cols-2 gap-2">
+              <label class="flex items-center gap-2 p-2.5 rounded-lg border border-zinc-800 bg-zinc-950/60 text-xs cursor-pointer">
+                <input type="radio" name="mtproto-host-mode" value="ip" onchange="toggleMTProtoHostMode()" checked class="accent-emerald-600">
+                <span>IP узла (<span id="mtproto-ip-preview" class="font-mono text-zinc-300">--</span>)</span>
+              </label>
+              <label class="flex items-center gap-2 p-2.5 rounded-lg border border-zinc-800 bg-zinc-950/60 text-xs cursor-pointer">
+                <input type="radio" name="mtproto-host-mode" value="domain" onchange="toggleMTProtoHostMode()" class="accent-emerald-600">
+                <span>Свой домен</span>
+              </label>
+            </div>
+            <input id="mtproto-custom-domain" type="text" oninput="updateLinks()" placeholder="например, ge2.sa.fbinfo.ru" class="hidden w-full text-xs px-3 py-2 rounded-lg border border-zinc-700 bg-transparent outline-none font-mono">
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-medium text-zinc-400 mb-1">Порт прослушивания *</label>
+              <input id="mtproto-port" type="number" oninput="updateLinks()" value="8443" class="w-full text-xs px-3 py-2 rounded-lg border border-zinc-700 bg-transparent outline-none font-mono">
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-zinc-400 mb-1">Fake TLS домен *</label>
+              <input id="mtproto-faketls-domain" type="text" value="yandex.ru" onchange="genMTProtoSecret()" class="w-full text-xs px-3 py-2 rounded-lg border border-zinc-700 bg-transparent outline-none">
+            </div>
+          </div>
+
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label class="text-xs font-medium text-zinc-400">Fake-TLS Секрет (ee + 16 hex + домен) *</label>
+              <button type="button" onclick="genMTProtoSecret()" class="text-[11px] text-emerald-400 hover:text-emerald-300">🎲 Сгенерировать</button>
+            </div>
+            <input id="mtproto-secret" type="text" oninput="updateLinks()" class="w-full text-xs px-3 py-2 rounded-lg border border-zinc-700 bg-transparent outline-none font-mono">
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-medium text-zinc-400 mb-1">Промо тег (Ad Tag)</label>
+              <input id="mtproto-adtag" type="text" placeholder="например, 1234abcd" class="w-full text-xs px-3 py-2 rounded-lg border border-zinc-700 bg-transparent outline-none font-mono">
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-zinc-400 mb-1">Лимит подключений</label>
+              <input id="mtproto-maxclients" type="number" value="0" placeholder="0 = без лимита" class="w-full text-xs px-3 py-2 rounded-lg border border-zinc-700 bg-transparent outline-none font-mono">
+            </div>
+          </div>
+
+          <div class="p-3 rounded-lg border border-zinc-800 bg-zinc-950/40 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold">Исходящий трафик (Upstream)</span>
+              <select id="mtproto-upstream" onchange="toggleMTProtoUpstream()" class="text-xs px-2 py-1 rounded bg-zinc-800 border border-zinc-700">
+                <option value="direct">Direct (Напрямую)</option>
+                <option value="vless">VLESS + Reality</option>
+              </select>
+            </div>
+            <input id="mtproto-vless" type="text" placeholder="vless://...@...:443?..." class="hidden w-full text-xs px-3 py-2 rounded-lg border border-zinc-700 bg-transparent outline-none font-mono">
+          </div>
+
+          <div class="pt-2 border-t border-zinc-800 space-y-2">
+            <span class="text-xs font-semibold block text-emerald-400">Клиентская ссылка Telegram:</span>
+            <div class="flex items-center gap-2">
+              <input id="mtproto-link" readonly class="flex-1 text-[11px] font-mono p-2.5 rounded-lg border border-zinc-800 bg-zinc-950 text-zinc-300 select-all outline-none">
+              <button type="button" onclick="copyLink('mtproto-link')" class="px-3 py-2.5 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-xs font-medium">Копировать</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <script>
+    let globalState = null;
+    let currentId = null;
+
+    function randHex(len) {
+      const arr = new Uint8Array(len);
+      crypto.getRandomValues(arr);
+      return Array.from(arr).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    function strToHex(str) {
+      let h = '';
+      for (let i = 0; i < str.length; i++) h += str.charCodeAt(i).toString(16);
+      return h;
+    }
+
+    async function init() {
+      try {
+        const auth = await fetch('/api/auth/me');
+        if (!auth.ok) return window.location.href = '/index.html';
+
+        const res = await fetch('/api/state');
+        if (!res.ok) return;
+        globalState = await res.json();
+
+        const select = document.getElementById('node-select');
+        select.innerHTML = '';
+        const nodes = Object.values(globalState.nodes || {});
+        if (nodes.length === 0) return alert('Ноды не найдены. Сначала добавьте узел в дашборде.');
+
+        nodes.forEach(n => {
+          const opt = document.createElement('option');
+          opt.value = n.id;
+          opt.innerText = `${n.name} (${n.ip})`;
+          select.appendChild(opt);
+        });
+
+        // Проверяем hash в URL (например #node-xyz)
+        const hashId = window.location.hash.replace('#', '');
+        if (hashId && globalState.nodes[hashId]) {
+          select.value = hashId;
+        } else {
+          select.value = nodes[0].id;
+        }
+
+        currentId = select.value;
+        loadForm();
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    function onSelectNode() {
+      currentId = document.getElementById('node-select').value;
+      loadForm();
+    }
+
+    function loadForm() {
+      if (!currentId || !globalState || !globalState.nodes[currentId]) return;
+      const node = globalState.nodes[currentId];
+      const web = node.web_proxy || {};
+      const mt = node.mtproto || {};
+
+      document.getElementById('node-ip-label').innerText = node.ip || 'no IP';
+      document.getElementById('web-ip-preview').innerText = node.ip || 'no IP';
+      document.getElementById('mtproto-ip-preview').innerText = node.ip || 'no IP';
+
+      document.getElementById('web-enabled').checked = web.enabled !== undefined ? !!web.enabled : true;
+      document.querySelector(`input[name="web-host-mode"][value="${web.host_mode || 'ip'}"]`).checked = true;
+      document.getElementById('web-custom-domain').value = web.custom_domain || '';
+      document.getElementById('web-port').value = web.port || 443;
+      document.getElementById('web-secret').value = web.secret || randHex(16);
+      document.getElementById('web-wspath').value = web.ws_path || '/';
+      document.getElementById('web-fallback').value = web.fallback_url || 'https://ya.ru';
+      document.getElementById('web-upstream').value = web.upstream_type || 'direct';
+      document.getElementById('web-vless').value = web.vless_url || '';
+
+      document.getElementById('mtproto-enabled').checked = mt.enabled !== undefined ? !!mt.enabled : true;
+      document.querySelector(`input[name="mtproto-host-mode"][value="${mt.host_mode || 'ip'}"]`).checked = true;
+      document.getElementById('mtproto-custom-domain').value = mt.custom_domain || '';
+      document.getElementById('mtproto-port').value = mt.port || 8443;
+      document.getElementById('mtproto-faketls-domain').value = mt.fake_tls_domain || 'yandex.ru';
+      document.getElementById('mtproto-secret').value = mt.secret || ('ee' + randHex(16) + strToHex('yandex.ru'));
+      document.getElementById('mtproto-adtag').value = mt.ad_tag || '';
+      document.getElementById('mtproto-maxclients').value = mt.max_clients || 0;
+      document.getElementById('mtproto-upstream').value = mt.upstream_type || 'direct';
+      document.getElementById('mtproto-vless').value = mt.vless_url || '';
+
+      toggleWebHostMode();
+      toggleMTProtoHostMode();
+      toggleWebUpstream();
+      toggleMTProtoUpstream();
+      updateLinks();
+    }
+
+    function toggleWebHostMode() {
+      const mode = document.querySelector('input[name="web-host-mode"]:checked')?.value || 'ip';
+      document.getElementById('web-custom-domain').classList.toggle('hidden', mode !== 'domain');
+      updateLinks();
+    }
+
+    function toggleMTProtoHostMode() {
+      const mode = document.querySelector('input[name="mtproto-host-mode"]:checked')?.value || 'ip';
+      document.getElementById('mtproto-custom-domain').classList.toggle('hidden', mode !== 'domain');
+      updateLinks();
+    }
+
+    function toggleWebUpstream() {
+      const t = document.getElementById('web-upstream').value;
+      document.getElementById('web-vless').classList.toggle('hidden', t !== 'vless');
+    }
+
+    function toggleMTProtoUpstream() {
+      const t = document.getElementById('mtproto-upstream').value;
+      document.getElementById('mtproto-vless').classList.toggle('hidden', t !== 'vless');
+    }
+
+    function genWebSecret() {
+      document.getElementById('web-secret').value = randHex(16);
+      updateLinks();
+    }
+
+    function genMTProtoSecret() {
+      const d = document.getElementById('mtproto-faketls-domain').value.trim() || 'yandex.ru';
+      document.getElementById('mtproto-secret').value = 'ee' + randHex(16) + strToHex(d);
+      updateLinks();
+    }
+
+    function updateLinks() {
+      if (!currentId || !globalState || !globalState.nodes[currentId]) return;
+      const node = globalState.nodes[currentId];
+
+      const webMode = document.querySelector('input[name="web-host-mode"]:checked')?.value || 'ip';
+      const webDomain = document.getElementById('web-custom-domain').value.trim();
+      const webHost = (webMode === 'domain' && webDomain) ? webDomain : node.ip;
+      const webPort = document.getElementById('web-port').value || 443;
+      const webSec = document.getElementById('web-secret').value || '';
+
+      const mtMode = document.querySelector('input[name="mtproto-host-mode"]:checked')?.value || 'ip';
+      const mtDomain = document.getElementById('mtproto-custom-domain').value.trim();
+      const mtHost = (mtMode === 'domain' && mtDomain) ? mtDomain : node.ip;
+      const mtPort = document.getElementById('mtproto-port').value || 8443;
+      const mtSec = document.getElementById('mtproto-secret').value || '';
+
+      document.getElementById('web-link').value = `tg://webproxy?server=${webHost}&port=${webPort}&secret=${webSec}`;
+      document.getElementById('mtproto-link').value = `tg://proxy?server=${mtHost}&port=${mtPort}&secret=${mtSec}`;
+    }
+
+    async function saveProxy() {
+      if (!currentId) return;
+
+      const btn = document.getElementById('btn-save-proxy');
+      btn.innerText = '⏳ Сохранение...';
+
+      const webMode = document.querySelector('input[name="web-host-mode"]:checked').value;
+      const mtMode = document.querySelector('input[name="mtproto-host-mode"]:checked').value;
+
+      const payload = {
+        node_id: currentId,
+        web_proxy: {
+          enabled: document.getElementById('web-enabled').checked,
+          host_mode: webMode,
+          custom_domain: document.getElementById('web-custom-domain').value.trim(),
+          port: parseInt(document.getElementById('web-port').value, 10),
+          secret: document.getElementById('web-secret').value.trim(),
+          ws_path: document.getElementById('web-wspath').value.trim() || '/',
+          fallback_url: document.getElementById('web-fallback').value.trim() || 'https://ya.ru',
+          max_clients: 0,
+          upstream_type: document.getElementById('web-upstream').value,
+          vless_url: document.getElementById('web-vless').value.trim()
+        },
+        mtproto: {
+          enabled: document.getElementById('mtproto-enabled').checked,
+          host_mode: mtMode,
+          custom_domain: document.getElementById('mtproto-custom-domain').value.trim(),
+          port: parseInt(document.getElementById('mtproto-port').value, 10),
+          secret: document.getElementById('mtproto-secret').value.trim(),
+          fake_tls_domain: document.getElementById('mtproto-faketls-domain').value.trim(),
+          ad_tag: document.getElementById('mtproto-adtag').value.trim(),
+          max_clients: parseInt(document.getElementById('mtproto-maxclients').value, 10) || 0,
+          upstream_type: document.getElementById('mtproto-upstream').value,
+          vless_url: document.getElementById('mtproto-vless').value.trim()
+        }
+      };
+
+      try {
+        const res = await fetch('/api/nodes/save-proxy', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+          if (globalState && globalState.nodes[currentId]) {
+            globalState.nodes[currentId].web_proxy = payload.web_proxy;
+            globalState.nodes[currentId].mtproto = payload.mtproto;
+          }
+          btn.innerText = '✅ Сохранено на ноде!';
+          setTimeout(() => { btn.innerText = '💾 Сохранить и применить на ноде'; }, 2000);
+        } else {
+          btn.innerText = '💾 Сохранить и применить на ноде';
+          alert('Ошибка сервера: ' + (await res.text()));
+        }
+      } catch (e) {
+        btn.innerText = '💾 Сохранить и применить на ноде';
+        alert('Ошибка сети: ' + e);
+      }
+    }
+
+    function copyLink(id) {
+      const el = document.getElementById(id);
+      el.select();
+      navigator.clipboard.writeText(el.value);
+      alert('Ссылка скопирована!');
+    }
+
+    async function handleLogout() {
+      await fetch('/api/auth/logout');
+      window.location.href = '/index.html';
+    }
+
+    init();
+  </script>
+</body>
+</html>
