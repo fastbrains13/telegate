@@ -12,8 +12,11 @@ services:
     volumes:
       - telegate_data:/data
     environment:
-      - APP_ENV=production
-      - DB_PATH=/data/telegate.db
+      - TELEGATE_LISTEN_ADDR=:8080
+      - TELEGATE_STATE_FILE=/data/telegate_state.json
+      - TELEGATE_ADMIN_USER=admin
+      - TELEGATE_ADMIN_PASS=admin
+      - TELEGATE_LOG_LEVEL=info
 
 volumes:
   telegate_data:
