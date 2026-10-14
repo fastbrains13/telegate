@@ -29,6 +29,9 @@ type Inbound struct {
 	SniffOverrideDestination bool              `json:"sniff_override_destination,omitempty"`
 	Users                    []InboundUser     `json:"users,omitempty"`
 	TLS                      *InboundTLSConfig `json:"tls,omitempty"`
+	// Поля для HTTP/WS inbound (Telegram Web Proxy)
+	Path string `json:"path,omitempty"`
+	Host string `json:"host,omitempty"`
 }
 
 type InboundUser struct {
@@ -42,14 +45,16 @@ type InboundTLSConfig struct {
 }
 
 type Outbound struct {
-	Type           string     `json:"type"`
-	Tag            string     `json:"tag"`
-	Server         string     `json:"server,omitempty"`
-	ServerPort     int        `json:"server_port,omitempty"`
-	UUID           string     `json:"uuid,omitempty"`
-	Flow           string     `json:"flow,omitempty"`
-	PacketEncoding string     `json:"packet_encoding,omitempty"`
-	TLS            *TLSConfig `json:"tls,omitempty"`
+	Type           string           `json:"type"`
+	Tag            string           `json:"tag"`
+	Server         string           `json:"server,omitempty"`
+	ServerPort     int              `json:"server_port,omitempty"`
+	UUID           string           `json:"uuid,omitempty"`
+	Flow           string           `json:"flow,omitempty"`
+	PacketEncoding string           `json:"packet_encoding,omitempty"`
+	Network        string           `json:"network,omitempty"`
+	TLS            *TLSConfig       `json:"tls,omitempty"`
+	Transport      *TransportConfig `json:"transport,omitempty"`
 }
 
 type TLSConfig struct {
@@ -71,6 +76,15 @@ type RealityConfig struct {
 	ShortID   string `json:"short_id,omitempty"`
 }
 
+// TransportConfig — настройки транспорта VLESS (ws/grpc/http).
+type TransportConfig struct {
+	Type        string            `json:"type,omitempty"`
+	Path        string            `json:"path,omitempty"`
+	Host        string            `json:"host,omitempty"`
+	ServiceName string            `json:"service_name,omitempty"`
+	Headers     map[string]string `json:"headers,omitempty"`
+}
+
 type RouteConfig struct {
 	Rules               []Rule `json:"rules"`
 	Final               string `json:"final"`
@@ -86,6 +100,7 @@ type Rule struct {
 type ProxyOptions struct {
 	WebProxyEnabled bool
 	WebProxyPort    int
+	WebProxyPath    string
 
 	MTProtoEnabled bool
 	MTProtoPort    int
@@ -115,15 +130,19 @@ func BuildDualProxyConfig(opts ProxyOptions) ([]byte, error) {
 		},
 	}
 
-	// 1. Inbound Web Proxy
+	// 1. Inbound Web Proxy — HTTP inbound для приёма трафика Telegram Web Proxy.
+	//    Telegram подключается по HTTP/HTTPS с PUT-запросом к /proxy?secret=...
 	if opts.WebProxyEnabled && opts.WebProxyPort > 0 {
+		path := opts.WebProxyPath
+		if path == "" {
+			path = "/"
+		}
 		cfg.Inbounds = append(cfg.Inbounds, Inbound{
-			Type:                     "mixed",
-			Tag:                      "tg-web-inbound",
-			Listen:                   "::",
-			ListenPort:               opts.WebProxyPort,
-			Sniff:                    true,
-			SniffOverrideDestination: false,
+			Type:       "http",
+			Tag:        "tg-web-inbound",
+			Listen:     "::",
+			ListenPort: opts.WebProxyPort,
+			Path:       path,
 		})
 	}
 
@@ -206,6 +225,31 @@ func ParseVlessLink(raw string) (*Outbound, error) {
 		UUID:           uuid,
 		Flow:           q.Get("flow"),
 		PacketEncoding: "xudp",
+	}
+
+	// Транспорт: tcp, ws, grpc, http
+	transportType := q.Get("type")
+	if transportType != "" && transportType != "tcp" {
+		out.Network = transportType
+		out.Transport = &TransportConfig{
+			Type: transportType,
+		}
+		switch transportType {
+		case "ws":
+			out.Transport.Path = q.Get("path")
+			out.Transport.Host = q.Get("host")
+			if ht := q.Get("headerType"); ht != "" {
+				out.Transport.Headers = map[string]string{"Host": ht}
+			}
+		case "grpc":
+			out.Transport.ServiceName = q.Get("serviceName")
+			if mh := q.Get("mode"); mh != "" {
+				out.Transport.Host = mh
+			}
+		case "http":
+			out.Transport.Path = q.Get("path")
+			out.Transport.Host = q.Get("host")
+		}
 	}
 
 	security := strings.ToLower(q.Get("security"))

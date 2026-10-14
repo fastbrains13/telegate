@@ -3,394 +3,68 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TeleGate — Telegram Proxy & Node Orchestrator</title>
+  <title>TeleGate — Дашборд</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          colors: {
-            brand: { 50: '#eef2ff', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca' }
-          }
-        }
-      }
-    }
+    tailwind.config = { darkMode: 'class', theme: { extend: { colors: { brand: { 50: '#eef2ff', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca' } } } } }
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com">
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     body { font-family: 'Plus Jakarta Sans', sans-serif; }
     .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
-    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
     .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(156, 163, 175, 0.4); border-radius: 9999px; }
   </style>
 </head>
 <body class="bg-zinc-950 text-zinc-100 min-h-screen flex antialiased">
 
-  <!-- AUTH SCREEN -->
-  <div id="auth-screen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950">
-    <div class="w-full max-w-sm p-8 rounded-2xl border border-zinc-800 bg-zinc-900 shadow-xl space-y-6">
-      <div class="text-center space-y-2">
-        <div class="w-12 h-12 mx-auto rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+  <aside id="sidebar"></aside>
+
+  <main class="flex-1 flex flex-col min-w-0 overflow-y-auto custom-scrollbar">
+    <header id="page-header"></header>
+
+    <div class="p-8 max-w-7xl w-full mx-auto space-y-6">
+
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="p-5 rounded-xl border border-zinc-800 bg-zinc-900/60 shadow-sm">
+          <span class="text-xs font-medium text-zinc-500">Активные подключения</span>
+          <div class="mt-2 flex items-baseline gap-2">
+            <span id="stat-conns" class="text-2xl font-bold tracking-tight">0</span>
+            <span class="text-xs text-emerald-500 font-medium">онлайн</span>
+          </div>
         </div>
-        <h2 class="text-xl font-bold tracking-tight">TeleGate Login</h2>
-        <p class="text-xs text-zinc-400">Панель управления Telegram Proxy</p>
+        <div class="p-5 rounded-xl border border-zinc-800 bg-zinc-900/60 shadow-sm">
+          <span class="text-xs font-medium text-zinc-500">Протоколы Telegram</span>
+          <div class="mt-2 flex items-center gap-1.5">
+            <span class="text-xs px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 font-semibold">Web Proxy (WSS)</span>
+            <span class="text-xs px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-semibold">MTProto (Fake-TLS)</span>
+          </div>
+        </div>
+        <div class="p-5 rounded-xl border border-zinc-800 bg-zinc-900/60 shadow-sm">
+          <span class="text-xs font-medium text-zinc-500">Кластер</span>
+          <div class="mt-2">
+            <span id="stat-nodes-count" class="text-2xl font-bold tracking-tight text-indigo-400">0</span>
+            <span class="text-xs text-zinc-400">узлов онлайн</span>
+          </div>
+        </div>
+        <div class="p-5 rounded-xl border border-zinc-800 bg-zinc-900/60 shadow-sm">
+          <span class="text-xs font-medium text-zinc-500">Правил блокировки</span>
+          <div class="mt-2">
+            <span id="stat-blacklist-count" class="text-2xl font-bold tracking-tight text-rose-500">0</span>
+          </div>
+        </div>
       </div>
-      <div id="auth-error" class="hidden p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-xs text-rose-500 text-center font-medium"></div>
-      <form onsubmit="handleLogin(event)" class="space-y-4">
-        <div>
-          <label class="block text-xs font-medium text-zinc-400 mb-1">Логин</label>
-          <input id="login-username" type="text" required value="admin" class="w-full text-xs px-3.5 py-2.5 rounded-lg border border-zinc-700 bg-transparent outline-none focus:ring-1 focus:ring-indigo-500">
+
+      <div class="rounded-xl border border-zinc-800 bg-zinc-900/60 shadow-sm overflow-hidden">
+        <div class="p-4 border-b border-zinc-800 flex justify-between items-center">
+          <h2 class="text-sm font-semibold tracking-tight">Серверные Ноды</h2>
+          <span class="text-xs text-zinc-400">Синхронизация по защищенному токену</span>
         </div>
-        <div>
-          <label class="block text-xs font-medium text-zinc-400 mb-1">Пароль</label>
-          <input id="login-password" type="password" required value="admin" class="w-full text-xs px-3.5 py-2.5 rounded-lg border border-zinc-700 bg-transparent outline-none focus:ring-1 focus:ring-indigo-500">
-        </div>
-        <button type="submit" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-lg shadow-md transition">
-          Войти в панель
-        </button>
-      </form>
+        <div id="nodes-container" class="divide-y divide-zinc-800"></div>
+      </div>
+
     </div>
-  </div>
-
-  <!-- MAIN APP -->
-  <div id="app-screen" class="hidden flex-1 flex min-h-screen">
-    <aside class="w-64 border-r border-zinc-800 bg-zinc-900/60 flex flex-col justify-between shrink-0">
-      <div>
-        <div class="h-16 flex items-center justify-between px-6 border-b border-zinc-800">
-          <div class="flex items-center gap-2.5">
-            <div class="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold shadow-md shadow-indigo-500/20">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-            </div>
-            <div>
-              <span class="font-bold tracking-tight text-base block leading-none">TeleGate</span>
-              <span class="text-[11px] text-zinc-400 font-medium tracking-wide">PROXY CONTROL</span>
-            </div>
-          </div>
-        </div>
-
-        <nav class="p-3 space-y-1">
-          <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-item w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium text-indigo-400 bg-indigo-950/40 transition">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
-            <span>Дашборд & Ноды</span>
-          </button>
-
-          <button onclick="window.location.href='/proxies.html'" id="nav-proxies" class="nav-item w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60 transition">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-            <span>Конфигуратор прокси</span>
-          </button>
-
-          <button onclick="switchTab('connections')" id="nav-connections" class="nav-item w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60 transition">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
-            <span>Подключения & IP</span>
-            <span id="badge-conns" class="ml-auto text-xs font-semibold px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500">0</span>
-          </button>
-
-          <button onclick="switchTab('security')" id="nav-security" class="nav-item w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60 transition">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-            <span>Черный список & GeoIP</span>
-          </button>
-        </nav>
-      </div>
-
-      <div class="p-4 border-t border-zinc-800 space-y-3">
-        <div class="flex items-center justify-between pt-2">
-          <div class="flex items-center gap-3">
-            <div class="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center font-bold text-xs">AD</div>
-            <div class="text-xs">
-              <div class="font-semibold text-zinc-100">admin</div>
-              <div class="text-zinc-400">Master: Live</div>
-            </div>
-          </div>
-          <button onclick="handleLogout()" title="Выйти" class="p-1.5 rounded-md text-zinc-400 hover:text-rose-500 transition">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
-          </button>
-        </div>
-      </div>
-    </aside>
-
-    <main class="flex-1 flex flex-col min-w-0 overflow-y-auto custom-scrollbar">
-      <header class="h-16 border-b border-zinc-800 bg-zinc-900/40 backdrop-blur px-8 flex items-center justify-between sticky top-0 z-20">
-        <h1 id="page-title" class="text-lg font-semibold tracking-tight">Дашборд & Серверные Ноды</h1>
-        <button onclick="openAddNodeModal()" class="inline-flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 shadow-sm transition">
-          + Добавить ноду
-        </button>
-      </header>
-
-      <div class="p-8 max-w-7xl w-full mx-auto space-y-8">
-
-        <!-- DASHBOARD TAB -->
-        <section id="tab-dashboard" class="space-y-6">
-          <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div class="p-5 rounded-xl border border-zinc-800 bg-zinc-900/60 shadow-sm">
-              <span class="text-xs font-medium text-zinc-500">Активные подключения</span>
-              <div class="mt-2 flex items-baseline gap-2">
-                <span id="stat-conns" class="text-2xl font-bold tracking-tight">0</span>
-                <span class="text-xs text-emerald-500 font-medium">онлайн</span>
-              </div>
-            </div>
-            <div class="p-5 rounded-xl border border-zinc-800 bg-zinc-900/60 shadow-sm">
-              <span class="text-xs font-medium text-zinc-500">Протоколы Telegram</span>
-              <div class="mt-2 flex items-center gap-1.5">
-                <span class="text-xs px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 font-semibold">Web Proxy (WSS)</span>
-                <span class="text-xs px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-semibold">MTProto (Fake-TLS)</span>
-              </div>
-            </div>
-            <div class="p-5 rounded-xl border border-zinc-800 bg-zinc-900/60 shadow-sm">
-              <span class="text-xs font-medium text-zinc-500">Кластер</span>
-              <div class="mt-2">
-                <span id="stat-nodes-count" class="text-2xl font-bold tracking-tight text-indigo-400">0</span>
-                <span class="text-xs text-zinc-400">узлов онлайн</span>
-              </div>
-            </div>
-            <div class="p-5 rounded-xl border border-zinc-800 bg-zinc-900/60 shadow-sm">
-              <span class="text-xs font-medium text-zinc-500">Правил блокировки</span>
-              <div class="mt-2">
-                <span id="stat-blacklist-count" class="text-2xl font-bold tracking-tight text-rose-500">0</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="rounded-xl border border-zinc-800 bg-zinc-900/60 shadow-sm overflow-hidden">
-            <div class="p-4 border-b border-zinc-800 flex justify-between items-center">
-              <h2 class="text-sm font-semibold tracking-tight">Серверные Ноды</h2>
-              <span class="text-xs text-zinc-400">Синхронизация по защищенному токену</span>
-            </div>
-            <div id="nodes-container" class="divide-y divide-zinc-800"></div>
-          </div>
-        </section>
-
-        <!-- PROXIES TAB -->
-        <section id="tab-proxies" class="hidden space-y-6">
-          <div class="p-5 rounded-xl border border-zinc-800 bg-zinc-900/60 flex flex-wrap items-center justify-between gap-4">
-            <div class="flex items-center gap-3">
-              <label class="text-xs font-medium text-zinc-400">Выберите узел для настройки:</label>
-              <select id="proxy-node-select" onchange="onNodeSelectChange()" class="text-xs px-3.5 py-2 rounded-lg border border-zinc-700 bg-zinc-900 text-zinc-100 outline-none font-semibold"></select>
-            </div>
-            <div class="flex items-center gap-2">
-              <button id="btn-save-proxy" type="button" onclick="saveCurrentNodeProxy()" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold shadow-md transition">
-                💾 Сохранить и применить на ноде
-              </button>
-            </div>
-          </div>
-
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-            <!-- 1. TELEGRAM WEB PROXY -->
-            <div class="p-6 rounded-xl border border-zinc-800 bg-zinc-900/60 shadow-sm space-y-5">
-              <div class="flex items-center justify-between pb-3 border-b border-zinc-800">
-                <div class="flex items-center gap-2">
-                  <span class="w-3 h-3 rounded-full bg-indigo-500"></span>
-                  <h3 class="font-bold text-sm">1. Telegram Web Proxy</h3>
-                </div>
-                <label class="inline-flex items-center gap-2 text-xs font-medium text-zinc-400 cursor-pointer">
-                  <span>Включен</span>
-                  <input id="web-enabled" type="checkbox" onchange="updateClientLinks()" class="w-4 h-4 accent-indigo-600">
-                </label>
-              </div>
-
-              <!-- Host Mode -->
-              <div class="space-y-2">
-                <label class="block text-xs font-medium text-zinc-400">Адрес подключения (Host):</label>
-                <div class="grid grid-cols-2 gap-2">
-                  <label class="flex items-center gap-2 p-2.5 rounded-lg border border-zinc-800 bg-zinc-950/60 text-xs cursor-pointer">
-                    <input type="radio" name="web-host-mode" value="ip" onchange="toggleWebHostMode()" checked class="accent-indigo-600">
-                    <span>IP узла (<span id="web-ip-preview" class="font-mono text-zinc-300">--</span>)</span>
-                  </label>
-                  <label class="flex items-center gap-2 p-2.5 rounded-lg border border-zinc-800 bg-zinc-950/60 text-xs cursor-pointer">
-                    <input type="radio" name="web-host-mode" value="domain" onchange="toggleWebHostMode()" class="accent-indigo-600">
-                    <span>Свой домен</span>
-                  </label>
-                </div>
-                <input id="web-custom-domain" type="text" oninput="updateClientLinks()" placeholder="например, ge2.sa.fbinfo.ru" class="hidden w-full text-xs px-3 py-2 rounded-lg border border-zinc-700 bg-transparent outline-none font-mono">
-              </div>
-
-              <div class="grid grid-cols-2 gap-4">
-                <div>
-                  <label class="block text-xs font-medium text-zinc-400 mb-1">Порт прослушивания *</label>
-                  <input id="web-port" type="number" oninput="updateClientLinks()" value="443" class="w-full text-xs px-3 py-2 rounded-lg border border-zinc-700 bg-transparent outline-none font-mono">
-                </div>
-                <div>
-                  <label class="block text-xs font-medium text-zinc-400 mb-1">WebSocket Path</label>
-                  <input id="web-wspath" type="text" value="/" placeholder="/" class="w-full text-xs px-3 py-2 rounded-lg border border-zinc-700 bg-transparent outline-none font-mono">
-                </div>
-              </div>
-
-              <div>
-                <div class="flex items-center justify-between mb-1">
-                  <label class="text-xs font-medium text-zinc-400">Секрет (32 hex-символа) *</label>
-                  <button type="button" onclick="generateWebSecret()" class="text-[11px] text-indigo-400 hover:text-indigo-300">🎲 Сгенерировать</button>
-                </div>
-                <input id="web-secret" type="text" oninput="updateClientLinks()" class="w-full text-xs px-3 py-2 rounded-lg border border-zinc-700 bg-transparent outline-none font-mono">
-              </div>
-
-              <div>
-                <label class="block text-xs font-medium text-zinc-400 mb-1">Fallback Web-Site (Self-steal)</label>
-                <input id="web-fallback" type="text" value="https://ya.ru" class="w-full text-xs px-3 py-2 rounded-lg border border-zinc-700 bg-transparent outline-none">
-              </div>
-
-              <div class="p-3 rounded-lg border border-zinc-800 bg-zinc-950/40 space-y-2">
-                <div class="flex items-center justify-between">
-                  <span class="text-xs font-semibold">Исходящий трафик (Upstream Relay)</span>
-                  <select id="web-upstream-type" onchange="toggleWebUpstream()" class="text-xs px-2 py-1 rounded bg-zinc-800 border border-zinc-700">
-                    <option value="direct">Direct (Напрямую)</option>
-                    <option value="vless">VLESS + Reality</option>
-                  </select>
-                </div>
-                <input id="web-vless-url" type="text" placeholder="vless://...@...:443?..." class="hidden w-full text-xs px-3 py-2 rounded-lg border border-zinc-700 bg-transparent outline-none font-mono">
-              </div>
-
-              <div class="pt-2 border-t border-zinc-800 space-y-2">
-                <span class="text-xs font-semibold block text-indigo-400">Клиентская ссылка Telegram:</span>
-                <div class="flex items-center gap-2">
-                  <input id="web-client-link" readonly class="flex-1 text-[11px] font-mono p-2.5 rounded-lg border border-zinc-800 bg-zinc-950 text-zinc-300 select-all outline-none">
-                  <button type="button" onclick="copyToClipboard('web-client-link')" class="px-3 py-2.5 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-xs font-medium">Копировать</button>
-                </div>
-              </div>
-            </div>
-
-            <!-- 2. TELEGRAM MTPROTO -->
-            <div class="p-6 rounded-xl border border-zinc-800 bg-zinc-900/60 shadow-sm space-y-5">
-              <div class="flex items-center justify-between pb-3 border-b border-zinc-800">
-                <div class="flex items-center gap-2">
-                  <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
-                  <h3 class="font-bold text-sm">2. Telegram MTProto (Fake-TLS)</h3>
-                </div>
-                <label class="inline-flex items-center gap-2 text-xs font-medium text-zinc-400 cursor-pointer">
-                  <span>Включен</span>
-                  <input id="mtproto-enabled" type="checkbox" onchange="updateClientLinks()" class="w-4 h-4 accent-emerald-600">
-                </label>
-              </div>
-
-              <!-- Host Mode -->
-              <div class="space-y-2">
-                <label class="block text-xs font-medium text-zinc-400">Адрес подключения (Host):</label>
-                <div class="grid grid-cols-2 gap-2">
-                  <label class="flex items-center gap-2 p-2.5 rounded-lg border border-zinc-800 bg-zinc-950/60 text-xs cursor-pointer">
-                    <input type="radio" name="mtproto-host-mode" value="ip" onchange="toggleMTProtoHostMode()" checked class="accent-emerald-600">
-                    <span>IP узла (<span id="mtproto-ip-preview" class="font-mono text-zinc-300">--</span>)</span>
-                  </label>
-                  <label class="flex items-center gap-2 p-2.5 rounded-lg border border-zinc-800 bg-zinc-950/60 text-xs cursor-pointer">
-                    <input type="radio" name="mtproto-host-mode" value="domain" onchange="toggleMTProtoHostMode()" class="accent-emerald-600">
-                    <span>Свой домен</span>
-                  </label>
-                </div>
-                <input id="mtproto-custom-domain" type="text" oninput="updateClientLinks()" placeholder="например, ge2.sa.fbinfo.ru" class="hidden w-full text-xs px-3 py-2 rounded-lg border border-zinc-700 bg-transparent outline-none font-mono">
-              </div>
-
-              <div class="grid grid-cols-2 gap-4">
-                <div>
-                  <label class="block text-xs font-medium text-zinc-400 mb-1">Порт прослушивания *</label>
-                  <input id="mtproto-port" type="number" oninput="updateClientLinks()" value="8443" class="w-full text-xs px-3 py-2 rounded-lg border border-zinc-700 bg-transparent outline-none font-mono">
-                </div>
-                <div>
-                  <label class="block text-xs font-medium text-zinc-400 mb-1">Fake TLS домен *</label>
-                  <input id="mtproto-faketls-domain" type="text" value="yandex.ru" onchange="generateMTProtoSecret()" class="w-full text-xs px-3 py-2 rounded-lg border border-zinc-700 bg-transparent outline-none">
-                </div>
-              </div>
-
-              <div>
-                <div class="flex items-center justify-between mb-1">
-                  <label class="text-xs font-medium text-zinc-400">Fake-TLS Секрет (ee + 16 hex + домен) *</label>
-                  <button type="button" onclick="generateMTProtoSecret()" class="text-[11px] text-emerald-400 hover:text-emerald-300">🎲 Сгенерировать</button>
-                </div>
-                <input id="mtproto-secret" type="text" oninput="updateClientLinks()" class="w-full text-xs px-3 py-2 rounded-lg border border-zinc-700 bg-transparent outline-none font-mono">
-              </div>
-
-              <div class="grid grid-cols-2 gap-4">
-                <div>
-                  <label class="block text-xs font-medium text-zinc-400 mb-1">Промо тег (Ad Tag)</label>
-                  <input id="mtproto-adtag" type="text" placeholder="например, 1234abcd" class="w-full text-xs px-3 py-2 rounded-lg border border-zinc-700 bg-transparent outline-none font-mono">
-                </div>
-                <div>
-                  <label class="block text-xs font-medium text-zinc-400 mb-1">Лимит подключений</label>
-                  <input id="mtproto-maxclients" type="number" value="0" placeholder="0 = без лимита" class="w-full text-xs px-3 py-2 rounded-lg border border-zinc-700 bg-transparent outline-none font-mono">
-                </div>
-              </div>
-
-              <div class="p-3 rounded-lg border border-zinc-800 bg-zinc-950/40 space-y-2">
-                <div class="flex items-center justify-between">
-                  <span class="text-xs font-semibold">Исходящий трафик (Upstream Relay)</span>
-                  <select id="mtproto-upstream-type" onchange="toggleMTProtoUpstream()" class="text-xs px-2 py-1 rounded bg-zinc-800 border border-zinc-700">
-                    <option value="direct">Direct (Напрямую)</option>
-                    <option value="vless">VLESS + Reality</option>
-                  </select>
-                </div>
-                <input id="mtproto-vless-url" type="text" placeholder="vless://...@...:443?..." class="hidden w-full text-xs px-3 py-2 rounded-lg border border-zinc-700 bg-transparent outline-none font-mono">
-              </div>
-
-              <div class="pt-2 border-t border-zinc-800 space-y-2">
-                <span class="text-xs font-semibold block text-emerald-400">Клиентская ссылка Telegram:</span>
-                <div class="flex items-center gap-2">
-                  <input id="mtproto-client-link" readonly class="flex-1 text-[11px] font-mono p-2.5 rounded-lg border border-zinc-800 bg-zinc-950 text-zinc-300 select-all outline-none">
-                  <button type="button" onclick="copyToClipboard('mtproto-client-link')" class="px-3 py-2.5 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-xs font-medium">Копировать</button>
-                </div>
-              </div>
-            </div>
-
-          </div>
-        </section>
-
-        <!-- CONNECTIONS TAB -->
-        <section id="tab-connections" class="hidden space-y-6">
-          <div class="rounded-xl border border-zinc-800 bg-zinc-900/60 shadow-sm overflow-hidden">
-            <table class="w-full text-left text-xs">
-              <thead class="bg-zinc-900 border-b border-zinc-800 text-zinc-400 font-medium">
-                <tr>
-                  <th class="py-3 px-4">Клиентский IP</th>
-                  <th class="py-3 px-4">Локация / Провайдер</th>
-                  <th class="py-3 px-4">Протокол</th>
-                  <th class="py-3 px-4">Маршрут</th>
-                  <th class="py-3 px-4 text-right">Действие</th>
-                </tr>
-              </thead>
-              <tbody id="conns-table-body" class="divide-y divide-zinc-800 font-mono"></tbody>
-            </table>
-          </div>
-        </section>
-
-        <!-- SECURITY TAB -->
-        <section id="tab-security" class="hidden space-y-6">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="p-6 rounded-xl border border-zinc-800 bg-zinc-900/60 shadow-sm space-y-4">
-              <h3 class="font-semibold text-sm">Черный список IP и CIDR-подсетей</h3>
-              <div class="flex gap-2">
-                <input id="input-ban-ip" type="text" placeholder="например, 198.51.100.4 или 203.0.113.0/24" class="flex-1 text-xs px-3 py-2 rounded-lg border border-zinc-700 bg-transparent font-mono outline-none">
-                <button onclick="addBanIP()" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-medium transition">Заблокировать</button>
-              </div>
-              <div id="blacklist-items" class="space-y-2 max-h-60 overflow-y-auto custom-scrollbar"></div>
-            </div>
-
-            <div class="p-6 rounded-xl border border-zinc-800 bg-zinc-900/60 shadow-sm space-y-4">
-              <h3 class="font-semibold text-sm">Блокировка стран (GeoIP)</h3>
-              <div class="flex gap-2">
-                <select id="country-select" class="flex-1 text-xs px-3 py-2 rounded-lg border border-zinc-700 bg-zinc-900 outline-none">
-                  <option value="">Выберите страну из списка...</option>
-                  <option value="CN">🇨🇳 Китай (CN)</option>
-                  <option value="IR">🇮🇷 Иран (IR)</option>
-                  <option value="RU">🇷🇺 Россия (RU)</option>
-                  <option value="US">🇺🇸 США (US)</option>
-                  <option value="UA">🇺🇦 Украина (UA)</option>
-                  <option value="TR">🇹🇷 Турция (TR)</option>
-                  <option value="IN">🇮🇳 Индия (IN)</option>
-                  <option value="BR">🇧🇷 Бразилия (BR)</option>
-                  <option value="DE">🇩🇪 Германия (DE)</option>
-                  <option value="NL">🇳🇱 Нидерланды (NL)</option>
-                  <option value="KP">🇰🇵 Северная Корея (KP)</option>
-                </select>
-                <button onclick="addSelectedCountry()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-medium transition">Заблокировать</button>
-              </div>
-              <div id="blacklist-countries" class="flex flex-wrap gap-2"></div>
-            </div>
-          </div>
-        </section>
-
-      </div>
-    </main>
-  </div>
+  </main>
 
   <!-- MODAL: ADD NODE -->
   <div id="add-node-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm hidden">
@@ -411,7 +85,10 @@
       </div>
       <div id="node-command-box" class="hidden space-y-2">
         <label class="block text-xs font-medium text-emerald-500">Запустите эту команду на целевом сервере:</label>
-        <div class="p-3 rounded-lg bg-zinc-950 font-mono text-[11px] text-zinc-300 break-all select-all border border-zinc-800" id="generated-command"></div>
+        <div class="flex items-center gap-2">
+          <div class="flex-1 p-3 rounded-lg bg-zinc-950 font-mono text-[11px] text-zinc-300 break-all select-all border border-zinc-800" id="generated-command"></div>
+          <button onclick="TG.copyText(document.getElementById('generated-command').textContent); TG.toast('Скопировано!')" class="px-3 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-xs font-medium">Копировать</button>
+        </div>
       </div>
       <div class="flex justify-end gap-2 pt-2 border-t border-zinc-800">
         <button onclick="closeAddNodeModal()" class="px-4 py-2 text-xs font-medium rounded-lg hover:bg-zinc-800 transition">Закрыть</button>
@@ -420,415 +97,73 @@
     </div>
   </div>
 
+  <script src="/js/common.js"></script>
   <script>
     let globalState = null;
-    let currentNodeId = null;
-    let activeTab = 'dashboard';
 
-    const countryFlags = {
-      'CN': '🇨🇳 Китай', 'IR': '🇮🇷 Иран', 'RU': '🇷🇺 Россия',
-      'US': '🇺🇸 США', 'UA': '🇺🇦 Украина', 'TR': '🇹🇷 Турция',
-      'IN': '🇮🇳 Индия', 'BR': '🇧🇷 Бразилия', 'DE': '🇩🇪 Германия',
-      'NL': '🇳🇱 Нидерланды', 'KP': '🇰🇵 КНДР'
-    };
-
-    function genHexStr(len) {
-      const arr = new Uint8Array(len);
-      crypto.getRandomValues(arr);
-      return Array.from(arr).map(b => b.toString(16).padStart(2, '0')).join('');
+    async function init() {
+      if (!(await TG.requireAuth())) return;
+      TG.renderChrome('dashboard', 'Дашборд & Серверные Ноды',
+        '<button onclick="openAddNodeModal()" class="inline-flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 shadow-sm transition">+ Добавить ноду</button>');
+      await loadState();
+      setInterval(loadState, 5000);
     }
 
-    function strToHex(str) {
-      let hex = '';
-      for (let i = 0; i < str.length; i++) {
-        hex += str.charCodeAt(i).toString(16);
-      }
-      return hex;
-    }
-
-    async function checkAuth() {
+    async function loadState() {
       try {
-        const res = await fetch('/api/auth/me');
-        if (res.ok) {
-          document.getElementById('auth-screen').classList.add('hidden');
-          document.getElementById('app-screen').classList.remove('hidden');
-          loadState(true);
-        } else {
-          document.getElementById('auth-screen').classList.remove('hidden');
-          document.getElementById('app-screen').classList.add('hidden');
-        }
-      } catch (e) {
-        document.getElementById('auth-screen').classList.remove('hidden');
-        document.getElementById('app-screen').classList.add('hidden');
-      }
-    }
-
-    async function handleLogin(e) {
-      e.preventDefault();
-      const errBox = document.getElementById('auth-error');
-      errBox.classList.add('hidden');
-      const username = document.getElementById('login-username').value;
-      const password = document.getElementById('login-password').value;
-
-      try {
-        const res = await fetch('/api/auth/login', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({username, password})
-        });
-        if (res.ok) {
-          checkAuth();
-        } else {
-          const text = await res.text();
-          errBox.innerText = text || 'Ошибка авторизации';
-          errBox.classList.remove('hidden');
-        }
-      } catch (err) {
-        errBox.innerText = 'Сервер недоступен';
-        errBox.classList.remove('hidden');
-      }
-    }
-
-    async function handleLogout() {
-      await fetch('/api/auth/logout');
-      checkAuth();
-    }
-
-    async function loadState(initForm = false) {
-      try {
-        const res = await fetch('/api/state');
-        if (!res.ok) return checkAuth();
-        globalState = await res.json();
-        render(initForm);
+        globalState = await TG.getState();
+        render();
       } catch (e) {
         console.error(e);
       }
     }
 
-    function render(initForm = false) {
+    function render() {
       if (!globalState) return;
-
       const nodesList = Object.values(globalState.nodes || {});
-      document.getElementById('stat-nodes-count').innerText = nodesList.filter(n => n.is_online).length;
+      document.getElementById('stat-nodes-count').innerText = nodesList.filter((n) => n.is_online).length;
       document.getElementById('stat-blacklist-count').innerText = (globalState.blacklist_cidr || []).length + (globalState.blacklist_countries || []).length;
 
       let totalConns = 0;
       const nodesContainer = document.getElementById('nodes-container');
-      const connsBody = document.getElementById('conns-table-body');
       nodesContainer.innerHTML = '';
-      connsBody.innerHTML = '';
-
-      const select = document.getElementById('proxy-node-select');
-      const oldVal = select.value;
-      select.innerHTML = '';
 
       if (nodesList.length === 0) {
         nodesContainer.innerHTML = '<div class="p-6 text-center text-xs text-zinc-500">Нет подключенных нод. Нажмите "+ Добавить ноду", чтобы подключить сервер.</div>';
-        select.innerHTML = '<option value="">Нет нод</option>';
       }
 
-      nodesList.forEach(node => {
+      nodesList.forEach((node) => {
         totalConns += (node.active_conns || []).length;
-        const opt = document.createElement('option');
-        opt.value = node.id;
-        opt.innerText = `${node.name} (${node.ip}) [${node.is_online ? 'ONLINE' : 'OFFLINE'}]`;
-        select.appendChild(opt);
-
         const statusDot = node.is_online
           ? '<span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500"></span>'
           : '<span class="inline-block w-2.5 h-2.5 rounded-full bg-rose-500"></span>';
 
-        nodesContainer.innerHTML += `
+        nodesContainer.insertAdjacentHTML('beforeend', `
           <div class="p-5 flex items-center justify-between">
             <div>
               <div class="flex items-center gap-2">
                 ${statusDot}
-                <span class="font-semibold text-sm">${node.name}</span>
-                <span class="font-mono text-xs text-zinc-400">(${node.ip || 'no IP'})</span>
+                <span class="font-semibold text-sm">${TG.esc(node.name)}</span>
+                <span class="font-mono text-xs text-zinc-400">(${TG.esc(node.ip || 'no IP')})</span>
                 <span class="text-[11px] px-2 py-0.5 rounded font-medium ${node.is_online ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}">
                   ${node.is_online ? 'Online' : 'Offline'}
                 </span>
               </div>
               <div class="text-xs text-zinc-400 mt-1">
-                Подключений: <b>${(node.active_conns || []).length}</b> • 
-                Web Proxy: <b>${node.web_proxy?.enabled ? 'Port ' + node.web_proxy.port : 'Выкл'}</b> • 
-                MTProto: <b>${node.mtproto?.enabled ? 'Port ' + node.mtproto.port : 'Выкл'}</b>
+                Подключений: <b>${(node.active_conns || []).length}</b> •
+                Web Proxy: <b>${node.web_proxy && node.web_proxy.enabled ? 'Port ' + TG.esc(node.web_proxy.port) : 'Выкл'}</b> •
+                MTProto: <b>${node.mtproto && node.mtproto.enabled ? 'Port ' + TG.esc(node.mtproto.port) : 'Выкл'}</b>
               </div>
             </div>
             <div class="flex items-center gap-2">
-              <button onclick="window.location.href='/proxies.html#${node.id}'" class="px-3 py-1.5 text-xs bg-zinc-800 hover:bg-zinc-700 rounded-lg">Настройки прокси</button>
+              <a href="/proxies.html#${node.id}" class="px-3 py-1.5 text-xs bg-zinc-800 hover:bg-zinc-700 rounded-lg inline-block">Настройки прокси</a>
               <button onclick="deleteNode('${node.id}')" class="px-3 py-1.5 text-xs text-rose-400 border border-rose-500/20 rounded-lg hover:bg-rose-500 hover:text-white transition">Удалить</button>
             </div>
           </div>
-        `;
-
-        (node.active_conns || []).forEach(c => {
-          connsBody.innerHTML += `
-            <tr class="hover:bg-zinc-800/20">
-              <td class="py-3 px-4 font-semibold">${c.ip}</td>
-              <td class="py-3 px-4 font-sans">${c.country || 'Unknown'} • ${c.isp || 'Peer'}</td>
-              <td class="py-3 px-4 font-sans text-indigo-400">${c.protocol}</td>
-              <td class="py-3 px-4 font-sans text-emerald-400">${c.outbound}</td>
-              <td class="py-3 px-4 text-right">
-                <button onclick="executeBan('${c.ip}')" class="px-2.5 py-1 text-[11px] rounded bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white transition font-sans">В бан</button>
-              </td>
-            </tr>
-          `;
-        });
+        `);
       });
 
       document.getElementById('stat-conns').innerText = totalConns;
-      document.getElementById('badge-conns').innerText = totalConns;
-
-      if (oldVal && globalState.nodes[oldVal]) {
-        select.value = oldVal;
-      } else if (nodesList.length > 0) {
-        select.value = nodesList[0].id;
-      }
-      currentNodeId = select.value;
-
-      if (initForm) {
-        fillNodeProxyForm();
-      }
-
-      const blContainer = document.getElementById('blacklist-items');
-      blContainer.innerHTML = '';
-      (globalState.blacklist_cidr || []).forEach(ip => {
-        blContainer.innerHTML += `
-          <div class="flex items-center justify-between p-2.5 rounded-lg border border-zinc-800 bg-zinc-950/40 text-xs font-mono">
-            <span class="text-rose-500 font-semibold">${ip}</span>
-            <button onclick="removeBan('${ip}')" class="text-zinc-400 hover:text-rose-500 font-sans">✕</button>
-          </div>
-        `;
-      });
-
-      const cContainer = document.getElementById('blacklist-countries');
-      cContainer.innerHTML = '';
-      (globalState.blacklist_countries || []).forEach(c => {
-        const title = countryFlags[c] || c;
-        cContainer.innerHTML += `
-          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-zinc-800 border border-zinc-700">
-            <span>${title}</span>
-            <button onclick="removeCountryBan('${c}')" class="text-zinc-400 hover:text-rose-500">✕</button>
-          </span>
-        `;
-      });
-    }
-
-    function onNodeSelectChange() {
-      currentNodeId = document.getElementById('proxy-node-select').value;
-      fillNodeProxyForm();
-    }
-
-    function openNodeConfig(id) {
-      switchTab('proxies');
-      document.getElementById('proxy-node-select').value = id;
-      currentNodeId = id;
-      fillNodeProxyForm();
-    }
-
-    function fillNodeProxyForm() {
-      if (!currentNodeId || !globalState || !globalState.nodes[currentNodeId]) return;
-      const node = globalState.nodes[currentNodeId];
-      const web = node.web_proxy || {};
-      const mt = node.mtproto || {};
-
-      document.getElementById('web-ip-preview').innerText = node.ip || '';
-      document.getElementById('mtproto-ip-preview').innerText = node.ip || '';
-
-      document.getElementById('web-enabled').checked = web.enabled !== undefined ? !!web.enabled : true;
-      document.querySelector(`input[name="web-host-mode"][value="${web.host_mode || 'ip'}"]`).checked = true;
-      document.getElementById('web-custom-domain').value = web.custom_domain || '';
-      document.getElementById('web-port').value = web.port || 443;
-      document.getElementById('web-secret').value = web.secret || genHexStr(16);
-      document.getElementById('web-wspath').value = web.ws_path || '/';
-      document.getElementById('web-fallback').value = web.fallback_url || 'https://ya.ru';
-      document.getElementById('web-upstream-type').value = web.upstream_type || 'direct';
-      document.getElementById('web-vless-url').value = web.vless_url || '';
-
-      document.getElementById('mtproto-enabled').checked = mt.enabled !== undefined ? !!mt.enabled : true;
-      document.querySelector(`input[name="mtproto-host-mode"][value="${mt.host_mode || 'ip'}"]`).checked = true;
-      document.getElementById('mtproto-custom-domain').value = mt.custom_domain || '';
-      document.getElementById('mtproto-port').value = mt.port || 8443;
-      document.getElementById('mtproto-faketls-domain').value = mt.fake_tls_domain || 'yandex.ru';
-      document.getElementById('mtproto-secret').value = mt.secret || ('ee' + genHexStr(16) + strToHex('yandex.ru'));
-      document.getElementById('mtproto-adtag').value = mt.ad_tag || '';
-      document.getElementById('mtproto-maxclients').value = mt.max_clients || 0;
-      document.getElementById('mtproto-upstream-type').value = mt.upstream_type || 'direct';
-      document.getElementById('mtproto-vless-url').value = mt.vless_url || '';
-
-      toggleWebHostMode();
-      toggleMTProtoHostMode();
-      toggleWebUpstream();
-      toggleMTProtoUpstream();
-      updateClientLinks();
-    }
-
-    function toggleWebHostMode() {
-      const mode = document.querySelector('input[name="web-host-mode"]:checked')?.value || 'ip';
-      document.getElementById('web-custom-domain').classList.toggle('hidden', mode !== 'domain');
-      updateClientLinks();
-    }
-
-    function toggleMTProtoHostMode() {
-      const mode = document.querySelector('input[name="mtproto-host-mode"]:checked')?.value || 'ip';
-      document.getElementById('mtproto-custom-domain').classList.toggle('hidden', mode !== 'domain');
-      updateClientLinks();
-    }
-
-    function toggleWebUpstream() {
-      const type = document.getElementById('web-upstream-type').value;
-      document.getElementById('web-vless-url').classList.toggle('hidden', type !== 'vless');
-    }
-
-    function toggleMTProtoUpstream() {
-      const type = document.getElementById('mtproto-upstream-type').value;
-      document.getElementById('mtproto-vless-url').classList.toggle('hidden', type !== 'vless');
-    }
-
-    function generateWebSecret() {
-      document.getElementById('web-secret').value = genHexStr(16);
-      updateClientLinks();
-    }
-
-    function generateMTProtoSecret() {
-      const domain = document.getElementById('mtproto-faketls-domain').value.trim() || 'yandex.ru';
-      document.getElementById('mtproto-secret').value = 'ee' + genHexStr(16) + strToHex(domain);
-      updateClientLinks();
-    }
-
-    function updateClientLinks() {
-      if (!currentNodeId || !globalState || !globalState.nodes[currentNodeId]) return;
-      const node = globalState.nodes[currentNodeId];
-
-      const webMode = document.querySelector('input[name="web-host-mode"]:checked')?.value || 'ip';
-      const webHostInput = document.getElementById('web-custom-domain').value.trim();
-      const webHost = (webMode === 'domain' && webHostInput) ? webHostInput : node.ip;
-      const webPort = document.getElementById('web-port').value;
-      const webSecret = document.getElementById('web-secret').value;
-
-      const mtMode = document.querySelector('input[name="mtproto-host-mode"]:checked')?.value || 'ip';
-      const mtHostInput = document.getElementById('mtproto-custom-domain').value.trim();
-      const mtHost = (mtMode === 'domain' && mtHostInput) ? mtHostInput : node.ip;
-      const mtPort = document.getElementById('mtproto-port').value;
-      const mtSecret = document.getElementById('mtproto-secret').value;
-
-      document.getElementById('web-client-link').value = `tg://webproxy?server=${webHost}&port=${webPort}&secret=${webSecret}`;
-      document.getElementById('mtproto-client-link').value = `tg://proxy?server=${mtHost}&port=${mtPort}&secret=${mtSecret}`;
-    }
-
-    async function saveCurrentNodeProxy() {
-      if (!currentNodeId) return;
-
-      const webMode = document.querySelector('input[name="web-host-mode"]:checked')?.value || 'ip';
-      const mtMode = document.querySelector('input[name="mtproto-host-mode"]:checked')?.value || 'ip';
-
-      const payload = {
-        node_id: currentNodeId,
-        web_proxy: {
-          enabled: document.getElementById('web-enabled').checked,
-          host_mode: webMode,
-          custom_domain: document.getElementById('web-custom-domain').value.trim(),
-          port: parseInt(document.getElementById('web-port').value, 10),
-          secret: document.getElementById('web-secret').value.trim(),
-          ws_path: document.getElementById('web-wspath').value.trim() || '/',
-          fallback_url: document.getElementById('web-fallback').value.trim() || 'https://ya.ru',
-          max_clients: 0,
-          upstream_type: document.getElementById('web-upstream-type').value,
-          vless_url: document.getElementById('web-vless-url').value.trim()
-        },
-        mtproto: {
-          enabled: document.getElementById('mtproto-enabled').checked,
-          host_mode: mtMode,
-          custom_domain: document.getElementById('mtproto-custom-domain').value.trim(),
-          port: parseInt(document.getElementById('mtproto-port').value, 10),
-          secret: document.getElementById('mtproto-secret').value.trim(),
-          fake_tls_domain: document.getElementById('mtproto-faketls-domain').value.trim(),
-          ad_tag: document.getElementById('mtproto-adtag').value.trim(),
-          max_clients: parseInt(document.getElementById('mtproto-maxclients').value, 10) || 0,
-          upstream_type: document.getElementById('mtproto-upstream-type').value,
-          vless_url: document.getElementById('mtproto-vless-url').value.trim()
-        }
-      };
-
-      const btn = document.getElementById('btn-save-proxy');
-      btn.innerText = '⏳ Сохранение...';
-
-      try {
-        const res = await fetch('/api/nodes/save-proxy', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify(payload)
-        });
-
-        if (res.ok) {
-          if (globalState && globalState.nodes[currentNodeId]) {
-            globalState.nodes[currentNodeId].web_proxy = payload.web_proxy;
-            globalState.nodes[currentNodeId].mtproto = payload.mtproto;
-          }
-          btn.innerText = '✅ Сохранено!';
-          setTimeout(() => { btn.innerText = '💾 Сохранить и применить на ноде'; }, 2000);
-        } else {
-          btn.innerText = '💾 Сохранить и применить на ноде';
-          alert('Ошибка сервера: ' + (await res.text()));
-        }
-      } catch (e) {
-        btn.innerText = '💾 Сохранить и применить на ноде';
-        alert('Ошибка сети: ' + e);
-      }
-    }
-
-    function copyToClipboard(id) {
-      const el = document.getElementById(id);
-      el.select();
-      navigator.clipboard.writeText(el.value);
-      alert('Ссылка скопирована!');
-    }
-
-    async function executeBan(ip) {
-      if (confirm(`Заблокировать IP ${ip}?`)) {
-        await fetch('/api/blacklist/ip', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({ip})
-        });
-        loadState(false);
-      }
-    }
-
-    async function addBanIP() {
-      const ip = document.getElementById('input-ban-ip').value.trim();
-      if (!ip) return;
-      await fetch('/api/blacklist/ip', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ip})
-      });
-      document.getElementById('input-ban-ip').value = '';
-      loadState(false);
-    }
-
-    async function removeBan(ip) {
-      await fetch('/api/blacklist/ip?ip=' + encodeURIComponent(ip), { method: 'DELETE' });
-      loadState(false);
-    }
-
-    async function addSelectedCountry() {
-      const select = document.getElementById('country-select');
-      const c = select.value;
-      if (!c) return;
-      await fetch('/api/blacklist/country', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({country: c})
-      });
-      select.value = '';
-      loadState(false);
-    }
-
-    async function removeCountryBan(c) {
-      await fetch('/api/blacklist/country?country=' + encodeURIComponent(c), { method: 'DELETE' });
-      loadState(false);
     }
 
     function openAddNodeModal() {
@@ -841,19 +176,17 @@
 
     function closeAddNodeModal() {
       document.getElementById('add-node-modal').classList.add('hidden');
-      loadState(false);
+      loadState();
     }
 
     async function createNode() {
       const name = document.getElementById('new-node-name').value.trim();
       const ip = document.getElementById('new-node-ip').value.trim();
-      if (!name) return alert('Введите имя ноды');
+      if (!name) return TG.toast('Введите имя ноды', 'err');
 
-      const res = await fetch('/api/nodes/create', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({name, ip})
-      });
+      const res = await TG.api('/api/nodes/create', { method: 'POST', body: JSON.stringify({ name, ip }) });
+      if (!res.ok) return TG.toast('Ошибка создания ноды', 'err');
+
       const data = await res.json();
       const host = window.location.host;
       const cmd = `curl -fsSL "http://${host}/bootstrap?token=${data.token}&id=${data.id}" | bash`;
@@ -863,33 +196,12 @@
     }
 
     async function deleteNode(id) {
-      if (confirm('Удалить ноду из кластера?')) {
-        await fetch('/api/nodes/delete?id=' + encodeURIComponent(id));
-        loadState(false);
-      }
+      if (!confirm('Удалить ноду из кластера?')) return;
+      await TG.api('/api/nodes/delete?id=' + encodeURIComponent(id), { method: 'DELETE' });
+      loadState();
     }
 
-    function switchTab(t) {
-      activeTab = t;
-      ['dashboard', 'proxies', 'connections', 'security'].forEach(tab => {
-        document.getElementById('tab-' + tab).classList.add('hidden');
-        document.getElementById('nav-' + tab).className = 'nav-item w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60 transition';
-      });
-      document.getElementById('tab-' + t).classList.remove('hidden');
-      document.getElementById('nav-' + t).className = 'nav-item w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium text-indigo-400 bg-indigo-950/40 transition';
-
-      if (t === 'proxies') {
-        fillNodeProxyForm();
-      }
-    }
-
-    setInterval(() => {
-      if (activeTab !== 'proxies') {
-        loadState(false);
-      }
-    }, 5000);
-
-    checkAuth();
+    init();
   </script>
 </body>
 </html>
